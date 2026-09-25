@@ -25,7 +25,7 @@ function renderHome() {
     </section>
     <div id="reco-warnings"></div>
     <section class="section" aria-labelledby="tickets-title">
-      <div class="section-head"><div><h2 id="tickets-title">Biletele zilei</h2><p id="reco-meta" class="muted small">Se calculează biletele…</p></div></div>
+      <div class="section-head"><div><h2 id="tickets-title">Biletele zilei</h2><p id="reco-meta" class="muted small">Se calculează biletele…</p>${utcDayNote() ? `<p class="muted small">${esc(utcDayNote())}</p>` : ''}</div><a id="wallet-chip" class="wallet-chip" href="#/portofel" title="Portofelul virtual">${icon('wallet')}<span>Sold virtual</span><b id="wallet-balance">—</b></a></div>
       <div id="tickets" class="ticket-grid" aria-busy="true">${skeletonCards(4, 'tall')}</div>
     </section>
     <section class="section" aria-labelledby="singles-title">
@@ -53,6 +53,31 @@ function renderHome() {
   });
   loadRecommendations(scope, day, sports, false);
   loadLiveStrip(scope, sports);
+  refreshBalance(scope);
+}
+
+// The virtual balance next to the bet forms (a bet with 0 RON first offers a deposit).
+async function refreshBalance(scope, wallet) {
+  try {
+    wallet = wallet || await api('/api/wallet');
+  } catch {
+    return;
+  }
+  if (!scope.alive) return;
+  const el = $('#wallet-balance');
+  if (el) el.textContent = money(wallet.balance, wallet.currency);
+  $('#wallet-chip')?.classList.toggle('empty', !(wallet.balance > 0));
+}
+
+// "x5, x10": the other tickets of the day that hold the same leg (same match and market).
+function sharedLegs(tickets) {
+  const holders = new Map();
+  tickets.forEach(t => (t.legs || []).forEach(l => {
+    const key = `${l.match_id}|${l.key}`;
+    holders.set(key, [...(holders.get(key) || []), t]);
+  }));
+  const badge = t => `x${Number(t.target ?? t.target_odds) >= 10 ? Math.round(t.target ?? t.target_odds) : (t.target ?? t.target_odds)}`;
+  return ticket => leg => (holders.get(`${leg.match_id}|${leg.key}`) || []).filter(t => t !== ticket).map(badge).join(', ');
 }
 
 async function loadRecommendations(scope, day, sports, refresh) {
@@ -81,12 +106,14 @@ async function loadRecommendations(scope, day, sports, refresh) {
   $('#reco-warnings').innerHTML = warningsBox(data.warnings, 'Avertismente la generare');
   $('#reco-disclaimer').innerHTML = disclaimerBox(data.disclaimer);
   const tickets = data.tickets || [];
+  const shared = sharedLegs(tickets);
   box.innerHTML = tickets.length ? tickets.map((ticket, i) => ticketCard(ticket, {
     id: `ticket-${i}`,
     actions: ticket.status === 'pending' && ticket.legs?.length ? betForm(ticket, i) : '',
+    shared: shared(ticket),
   })).join('') : emptyState('Niciun bilet pentru această zi.', 'Alege altă zi sau mai multe sporturi.');
   hydrate(box);
-  $$('.bet-form', box).forEach(form => bindBetForm(form, stake => post('/api/wallet/bet', {stake, day, target: Number(form.dataset.target), sports})));
+  $$('.bet-form', box).forEach(form => bindBetForm(form, stake => placeBet({stake, day, target: Number(form.dataset.target), sports}), scope));
   renderSingles(data.singles || []);
 }
 
@@ -99,8 +126,9 @@ function betForm(ticket, index) {
     </form>`;
 }
 
-// Inline stake form: live potential payout and a POST through `place(stake)`.
-function bindBetForm(form, place) {
+// Inline stake form: live potential payout and a POST through `place(stake)` (placeBet:
+// with too little virtual money it offers a deposit first).
+function bindBetForm(form, place, scope) {
   const input = form.querySelector('input');
   const out = form.querySelector('.potential b');
   const odds = Number(form.dataset.odds) || 0;
@@ -113,10 +141,13 @@ function bindBetForm(form, place) {
     button.disabled = true;
     try {
       const wallet = await place(stake);
-      persist('stake', stake);
-      toast(`Pariu virtual plasat. Sold: ${money(wallet.balance, wallet.currency)}.`, 'success', {href: '#/portofel', label: 'Vezi portofelul'});
+      if (wallet) {
+        persist('stake', stake);
+        toast(`Pariu virtual plasat. Sold: ${money(wallet.balance, wallet.currency)}.`, 'success', {href: '#/portofel', label: 'Vezi portofelul'});
+        if (scope) refreshBalance(scope, wallet);
+      }
     } catch (error) {
-      toast(error.message, 'error', error.status === 400 && /Sold/.test(error.message) ? {href: '#/portofel', label: 'Depune bani virtuali'} : null);
+      toast(error.message, 'error');
     } finally {
       button.disabled = false;
     }
@@ -130,6 +161,7 @@ function renderSingles(singles) {
     box.innerHTML = emptyState('Nicio selecție sigură încă.', 'Apar când există meciuri viitoare cu cote reale și date suficiente (grad A–C).');
     return;
   }
+  const scope = currentScope;
   box.innerHTML = singles.map((leg, i) => `<article class="card single sport-${esc(leg.sport)}">
       <ol class="legs">${legRow(leg)}</ol>
       <div class="single-actions"><span class="muted small">#${i + 1} după probabilitate</span><button class="btn btn-secondary btn-small" type="button" data-single="${i}">${icon('wallet')}Joacă virtual</button></div>
@@ -140,8 +172,10 @@ function renderSingles(singles) {
     const stake = await stakeDialog({title: 'Pariu virtual pe o selecție', text: `${leg.home} – ${leg.away}: ${leg.label} la cota ${num(leg.odds)} (${pct(leg.probability)} estimat).`});
     if (stake == null) return;
     try {
-      const wallet = await post('/api/wallet/bet', {stake, legs: [{match_id: leg.match_id, key: leg.key}], label: `${leg.home} – ${leg.away}: ${leg.label}`});
+      const wallet = await placeBet({stake, legs: [{match_id: leg.match_id, key: leg.key}], label: `${leg.home} – ${leg.away}: ${leg.label}`});
+      if (!wallet) return;
       toast(`Pariu virtual plasat. Sold: ${money(wallet.balance, wallet.currency)}.`, 'success', {href: '#/portofel', label: 'Vezi portofelul'});
+      refreshBalance(scope, wallet);
     } catch (error) {
       toast(error.message, 'error');
     }
@@ -152,7 +186,11 @@ async function loadLiveStrip(scope, sports) {
   const results = await Promise.allSettled(sports.map(sport => api(`/api/live?sport=${sport}`)));
   if (!scope.alive) return;
   const box = $('#live-strip');
-  const items = results.flatMap(r => (r.status === 'fulfilled' ? r.value.matches || [] : []));
+  // Interleaved across sports (football, basketball, tennis, football...), so a busy football
+  // evening never hides the other sports from the strip.
+  const lists = results.map(r => (r.status === 'fulfilled' ? r.value.matches || [] : []));
+  const items = [];
+  for (let i = 0; i < Math.max(0, ...lists.map(l => l.length)); i += 1) lists.forEach(l => { if (l[i]) items.push(l[i]); });
   const failed = results.find(r => r.status === 'rejected');
   if (!items.length) {
     box.innerHTML = failed && results.every(r => r.status === 'rejected')
@@ -170,7 +208,7 @@ function liveMini(item) {
   const parts = item.sport === 'football'
     ? [{label: '1', value: p['1']}, {label: 'X', value: p.X}, {label: '2', value: p['2']}]
     : [{label: '1', value: p['1']}, {label: '2', value: p['2']}];
-  return `<a class="card live-mini sport-${esc(item.sport)}" href="#/live" aria-label="${esc(m.home)} – ${esc(m.away)}, live">
+  return `<a class="card live-mini sport-${esc(item.sport)}" href="#/live?meci=${encodeURIComponent(m.id)}&sport=${encodeURIComponent(item.sport)}" aria-label="${esc(m.home)} – ${esc(m.away)}, live">
       <div class="lm-top">${sportIcon(item.sport)}<span class="lm-league">${esc(item.competition || leagueName(m.league))}</span><span class="live-pill">${esc(periodLabel(item))}</span></div>
       <div class="lm-row">${crest(m.home_logo, m.home, 'sm')}<span class="team-name">${esc(m.home)}</span><b>${esc(item.score?.home ?? m.home_goals ?? '')}</b></div>
       <div class="lm-row">${crest(m.away_logo, m.away, 'sm')}<span class="team-name">${esc(m.away)}</span><b>${esc(item.score?.away ?? m.away_goals ?? '')}</b></div>

@@ -108,8 +108,12 @@ def test_home_board_live_and_images_work_offline(client, app):
         assert {item["grade"] for item in board["items"]} & {"A", "B", "C"}
         with_logos = [i for i in board["items"] if i["match"]["home_logo"]]
         assert len(with_logos) >= 0.9 * len(board["items"])
+        statuses = {item["match"]["status"] for item in board["items"]}
+        # Today's list also carries the games in play (the board's "Live" filter is not empty).
+        assert statuses == {"scheduled", "live"}, sport
         for item in board["items"]:
-            assert datetime.fromisoformat(item["match"]["kickoff"]) > NOW
+            if item["match"]["status"] == "scheduled":
+                assert datetime.fromisoformat(item["match"]["kickoff"]) > NOW
             assert_logo(item["match"]["league_logo"])
     detail = client.get(f"/api/analysis/{legs[0]['match_id']}").json()
     assert_logo(detail["match"]["home_logo"])
@@ -204,8 +208,11 @@ def rows_of(groups):
 
 
 def test_day_lists_follow_the_clock_and_are_deterministic():
-    today = rows_of(fake().day_groups("tennis", TODAY))
-    assert today == rows_of(fake().day_groups("tennis", TODAY))
+    everything = rows_of(fake().day_groups("tennis", TODAY))
+    assert everything == rows_of(fake().day_groups("tennis", TODAY))
+    live_ids = {r["match_id"] for r in rows_of(fake().live("tennis"))}
+    today = [r for r in everything if r["match_id"] not in live_ids]
+    assert today and live_ids <= {r["match_id"] for r in everything}
     assert all(NOW.timestamp() < r["timestamp"] < NOW.timestamp() + 86400 for r in today)
     assert all(not r["match_status"]["is_started"] for r in today)
     assert all(r["scores"] == {"home": None, "away": None} for r in today)
@@ -300,3 +307,27 @@ def test_a_busy_port_is_a_clear_error_not_a_traceback(monkeypatch, capsys):
     monkeypatch.setattr(mock, "build_app", lambda *a, **k: pytest.fail("must not build"))
     assert mock.main(["--port", "8765"]) == 1
     assert "Portul 8765 este ocupat" in capsys.readouterr().err
+
+
+def test_mock_stats_are_football_only_and_stale_workdirs_are_removed(tmp_path):
+    handler = fake()
+    football = rows_of(handler.live("football"))[0]["match_id"]
+    tennis = rows_of(handler.live("tennis"))[0]["match_id"]
+    url = "https://x/api/flashscore/v2/matches/match/stats?match_id="
+    assert handler(httpx.Request("GET", url + football)).json()
+    assert handler(httpx.Request("GET", url + tennis)).json() == []
+
+    import os
+
+    old = tmp_path / "footypreds-mock-old"
+    fresh = tmp_path / "footypreds-mock-new"
+    other = tmp_path / "something-else"
+    for folder in (old, fresh, other):
+        folder.mkdir()
+        (folder / "x.txt").write_text("x")
+    now = 1_000_000.0
+    os.utime(old, (now - 7 * 3600, now - 7 * 3600))
+    os.utime(fresh, (now - 60, now - 60))
+    os.utime(other, (now - 7 * 3600, now - 7 * 3600))
+    removed = mock.remove_stale_workdirs(tmp_path, now)
+    assert removed == [old] and not old.exists() and fresh.exists() and other.exists()

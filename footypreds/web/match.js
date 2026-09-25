@@ -104,7 +104,7 @@ function matchHero(m, a, data, pending) {
     <div class="mh-bottom">
       <div class="confidence">${gradeBadge(a.grade, a.confidence)}<span>Încredere</span><span class="meter"><span data-w="${clamp01((a.confidence || 0) / 100)}"></span></span><b>${esc(a.confidence ?? '—')}/100</b></div>
       <div id="enrich-line" class="small muted">${pending ? '' : data.saved ? 'Predicția a fost salvată în track record (prima analiză înainte de start).' : ''}</div>
-      ${m.id.startsWith('demo-') ? '' : `<button id="refresh-analysis" class="btn btn-ghost btn-small" type="button">${icon('refresh')}Reîmprospătează</button>`}
+      ${m.id.startsWith('demo-') || !isUpcoming(m) ? '' : `<button id="refresh-analysis" class="btn btn-ghost btn-small" type="button">${icon('refresh')}Reîmprospătează</button>`}
     </div>
   </section>`;
 }
@@ -117,6 +117,10 @@ function footballBody(m, a, markets, standings) {
   const marketLine = c.market_1x2
     ? `<p class="small muted">Model: 1 ${pct(c.model_1x2?.['1'])} · X ${pct(c.model_1x2?.X)} · 2 ${pct(c.model_1x2?.['2'])} · Piață fără marjă: 1 ${pct(c.market_1x2['1'])} · X ${pct(c.market_1x2.X)} · 2 ${pct(c.market_1x2['2'])} · pondere piață ${pct(c.market_weight)}</p>`
     : '<p class="small muted">Fără cote 1X2: probabilitățile vin numai din model.</p>';
+  const totals = c.totals || {};
+  const totalsLine = isNum(totals.market_over25)
+    ? `<p class="small muted">Peste 2.5 aliniat cu piața: model calibrat ${pct(totals.calibrated_over25)} · piață fără marjă ${pct(totals.market_over25)} · final ${pct(totals.over25)} (pondere piață ${pct(totals.market_weight)}).</p>`
+    : isNum(totals.calibrated_over25) ? `<p class="small muted">Peste 2.5 calibrat: ${pct(totals.model_over25)} → ${pct(totals.calibrated_over25)} (fără cotă peste/sub 2.5).</p>` : '';
   const xg = a.expected_goals || a.expected || {};
   return `
     <section class="section grid grid-2">
@@ -124,6 +128,7 @@ function footballBody(m, a, markets, standings) {
         <h2 class="panel-title">Probabilități</h2>
         ${outcomeStrip([{label: `1 · ${m.home}`, value: markets['1']?.probability, odds: odds['1']}, {label: 'X · egal', value: markets.X?.probability, odds: odds.X}, {label: `2 · ${m.away}`, value: markets['2']?.probability, odds: odds['2']}])}
         ${marketLine}
+        ${totalsLine}
         <div class="kpi-grid kpi-4">
           ${kpi(`xG ${m.home}`, num(xg.home))}${kpi(`xG ${m.away}`, num(xg.away))}
           ${kpi('Peste 2.5', pct(markets.over25?.probability))}${kpi('Ambele marchează', pct(markets.btts?.probability))}
@@ -134,7 +139,7 @@ function footballBody(m, a, markets, standings) {
     <section class="section grid grid-2">
       <div class="card panel"><h2 class="panel-title">Scor corect</h2><p class="small muted">Rânduri: goluri ${esc(m.home)} · coloane: goluri ${esc(m.away)}</p>${heatmap(a.score_grid || [])}
         <table class="table compact"><tbody>${(a.scores || []).slice(0, 5).map(s => `<tr><td><b>${esc(s.score)}</b></td><td class="num">${pct(s.probability, 1)}</td><td class="num muted">cotă corectă ${num(1 / s.probability)}</td></tr>`).join('')}</tbody></table></div>
-      <div class="card panel"><h2 class="panel-title">Total goluri</h2>${barsList((a.goal_distribution || []).map((p, i, list) => ({label: i === list.length - 1 ? `${i}+ goluri` : `${i} goluri`, value: p})))}
+      <div class="card panel"><h2 class="panel-title">Total goluri</h2>${barsList((a.goal_distribution || []).map((p, i, list) => ({label: i === list.length - 1 ? `${i}+ goluri` : plural(i, 'gol', 'goluri'), value: p})))}
         <h2 class="panel-title gap">Pauză / Final</h2>${barsList((a.htft || []).slice(0, 6).map((x, i) => ({label: x.label, value: x.probability, top: i === 0})))}</div>
     </section>
     <section class="section"><div class="section-head"><div><h2>Forma echipelor</h2><p class="muted small">Toate competițiile · cel mai recent meci primul</p></div></div>
@@ -169,17 +174,18 @@ function footballTeamCard(name, logo, form) {
       <thead><tr><th></th><th class="num">M</th><th class="num">Pct/m</th><th class="num">GM</th><th class="num">GP</th><th class="num">P2.5</th><th class="num">GG</th></tr></thead>
       <tbody>${row('Ultimele 5', form.last5)}${row('Ultimele 10', form.last10)}${row('Acasă (10)', form.home10)}${row('Deplasare (10)', form.away10)}</tbody>
     </table></div>
-    ${form.streaks ? `<p class="small muted">Serii: ${esc(streak.unbeaten)} fără înfrângere · ${esc(streak.winless)} fără victorie · marchează de ${esc(streak.scoring)} meciuri${isNum(form.days_since_last) ? ` · ultimul meci acum ${form.days_since_last} zile` : ''}</p>` : ''}
-    ${lastMatches(form.last)}
+    ${form.streaks ? `<p class="small muted">Serii: ${esc(plural(streak.unbeaten ?? 0, 'meci', 'meciuri'))} fără înfrângere · ${esc(plural(streak.winless ?? 0, 'meci', 'meciuri'))} fără victorie · marchează de ${esc(plural(streak.scoring ?? 0, 'meci', 'meciuri'))}${isNum(form.days_since_last) ? ` · ultimul meci ${esc(daysAgo(form.days_since_last))}` : ''}</p>` : ''}
+    ${lastMatches(form.last, 'football')}
   </div>`;
 }
 
-function lastMatches(list) {
+// Tennis has no home/away: its rows show no venue.
+function lastMatches(list, sport = 'football') {
   if (!list?.length) return '<p class="muted small">Niciun rezultat recent disponibil.</p>';
-  return `<ul class="last-list">${list.slice(0, 10).map(g => `<li>
+  return `<ul class="last-list${sport === 'tennis' ? ' no-venue' : ''}">${list.slice(0, 10).map(g => `<li>
       <span class="res res-${esc(g.result)}">${esc({W: 'V', D: 'E', L: 'Î'}[g.result] || g.result || '')}</span>
       <span class="muted small">${esc(fmtShortDate(g.date))}</span>
-      <span class="venue small">${g.venue === 'A' ? 'acasă' : 'depl.'}</span>
+      ${sport === 'tennis' ? '' : `<span class="venue small">${g.venue === 'A' ? 'acasă' : 'depl.'}</span>`}
       ${crest(g.opponent_logo, g.opponent, 'xs')}<span class="opp">${esc(g.opponent)}</span>
       <b class="num">${esc(g.score)}</b>
       <span class="comp small muted">${esc(g.competition)}</span>
@@ -302,16 +308,16 @@ function genericTeamCard(name, logo, form, sport) {
   ];
   if (sport === 'basketball') {
     stats.push(kpi('Diferență medie (5)', isNum(form.margin_avg5) ? `${form.margin_avg5 > 0 ? '+' : ''}${num(form.margin_avg5, 1)}` : '—'));
-    stats.push(kpi('Odihnă', isNum(form.rest_days) ? `${form.rest_days} zile` : '—', form.back_to_back ? 'meci și ieri (back-to-back)' : ''));
+    stats.push(kpi('Odihnă', isNum(form.rest_days) ? esc(plural(form.rest_days, 'zi', 'zile')) : '—', form.back_to_back ? 'meci și ieri (back-to-back)' : ''));
   } else {
     stats.push(kpi('Seturi câștigate/meci', w10 ? num(w10.scored_avg, 1) : '—', w10 ? `pierdute ${num(w10.conceded_avg, 1)}` : ''));
-    stats.push(kpi('Ultimul meci', isNum(form.days_since_last) ? `acum ${form.days_since_last} zile` : '—'));
+    stats.push(kpi('Ultimul meci', isNum(form.days_since_last) ? esc(daysAgo(form.days_since_last)) : '—'));
   }
   return `<div class="card panel team-card">
     <h3 class="team-head">${crest(logo, name, 'md', sport === 'tennis' ? 'flag' : 'team')}<span>${esc(name)}</span>${formPills(form.sequence)}</h3>
     <div class="kpi-grid kpi-4 small-kpis">${stats.join('')}</div>
-    ${form.streak?.count ? `<p class="small muted">Serie curentă: ${esc(form.streak.count)} ${esc(form.streak.result === 'W' ? (form.streak.count === 1 ? 'victorie' : 'victorii') : (form.streak.count === 1 ? 'înfrângere' : 'înfrângeri'))} la rând${isNum(form.margin_avg10) ? ` · diferență medie (10): ${form.margin_avg10 > 0 ? '+' : ''}${num(form.margin_avg10, 1)}` : ''}</p>` : ''}
-    ${lastMatches(form.last)}
+    ${form.streak?.count ? `<p class="small muted">Serie curentă: ${esc(form.streak.result === 'W' ? plural(form.streak.count, 'victorie', 'victorii') : plural(form.streak.count, 'înfrângere', 'înfrângeri'))} la rând${isNum(form.margin_avg10) ? ` · diferență medie (10): ${form.margin_avg10 > 0 ? '+' : ''}${num(form.margin_avg10, 1)}` : ''}</p>` : ''}
+    ${lastMatches(form.last, sport)}
   </div>`;
 }
 
@@ -376,6 +382,10 @@ function qualityPanel(m, a, sport) {
   } else if (isNum(c.market_weight)) {
     items.push(kpi('Pondere piață', pct(c.market_weight)));
   }
-  return `<section class="section"><div class="section-head"><div><h2>Calitatea datelor și modelul</h2><p class="muted small">Model ${esc(a.version)} · ${a.calibrated ? 'calibrat' : 'necalibrat'} · nota A–D arată câte date recente există; doar A–C intră în bilete.</p></div></div>
+  // The version name says "calibrated-goals" while analysis.calibrated (1X2) is false: spell out
+  // which part is calibrated instead of printing both flags side by side.
+  const calibration = a.calibrated ? 'probabilități calibrate'
+    : sport === 'football' && c.totals ? '1X2 necalibrat separat; goluri calibrate' : 'necalibrat separat';
+  return `<section class="section"><div class="section-head"><div><h2>Calitatea datelor și modelul</h2><p class="muted small">Versiunea modelului ${esc(a.version)} · ${esc(calibration)} · nota A–D arată câte date recente există; doar A–C intră în bilete.</p></div></div>
     <div class="card panel"><div class="kpi-grid kpi-5">${items.join('')}</div></div></section>`;
 }

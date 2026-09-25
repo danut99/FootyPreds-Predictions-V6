@@ -31,7 +31,7 @@ const PAGES = {
   home: () => renderHome(),
   board: () => renderBoard(),
   match: current => renderMatch(current.id, current.sport),
-  live: () => renderLive(),
+  live: current => renderLive(current.params),
   tickets: () => renderTickets(),
   simulator: () => renderSimulator(),
   wallet: () => renderWallet(),
@@ -47,6 +47,7 @@ const TITLES = {
 function route({keepScroll = false} = {}) {
   const current = parseRoute();
   newScope();
+  closeOverlays();
   const nav = current.name === 'match' ? 'board' : current.name;
   $$('.nav a').forEach(a => {
     const active = a.dataset.route === nav;

@@ -289,6 +289,11 @@ class RecentLoader:
             today = sim_datasets.utcnow().date()
             loaded, total, matches = self.coverage(days, sports, today)
             state.update(days_loaded=loaded, days_total=total, matches=matches)
+            if not self.running:
+                # FlashScore list requests a prepare call of this window would still spend
+                # (window + warm-up days not yet synced; yesterday may come from the cache).
+                pending = len(self.plan(days, sports, RECENT_WARMUP, today))
+                state["planned"] = min(pending, self.budget)
         state.update(
             days=days or 0,
             sports=list(sports or []),

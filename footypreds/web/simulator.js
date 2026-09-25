@@ -116,7 +116,7 @@ function drawStrategyOptions() {
       <label class="field">Încasează după (zile)<input id="sim-maxdays" type="number" min="1" max="365" step="1" placeholder="niciodată"></label>
       <label class="check"><input id="sim-restart" type="checkbox" ${remember('sim.restart', true) ? 'checked' : ''}> Repornește cu suma inițială după o pierdere</label>
     </div>
-    <p class="small muted">Scara: în fiecare zi un singur bilet la cota țintă, cu <b id="sim-reinvest-text"></b> din soldul scării. Un bilet pierdut încheie scara.</p>`;
+    <p class="small muted">Scara: în fiecare zi un singur bilet la cota țintă, cu <b id="sim-reinvest-text"></b> din soldul scării. Un bilet pierdut încheie scara; un bilet anulat returnează miza și ziua contează ca zi ținută. „Încasează după” închide scara după N bilete reușite și pornește alta cu suma inițială (și fără repornire după pierdere).</p>`;
     const range = $('#sim-reinvest');
     const sync = () => {
       $('#sim-reinvest-out').textContent = `${range.value}%`;
@@ -154,7 +154,7 @@ async function loadDatasets(scope) {
   const select = $('#sim-dataset');
   const sports = new Set(chosenSports());
   const listed = simState.datasets.filter(d => d.id !== 'recent' && (sports.size === 3 || sports.has(d.sport)));
-  select.innerHTML = `<option value="recent">Ultimele zile (din aplicație) · ${esc(chosenSports().map(s => SPORT_LABEL[s]).join(', '))}</option>${listed.map(d => `<option value="${esc(d.id)}">${esc(d.label)}${d.available ? ` · ${esc(d.bettable)} meciuri` : ' · indisponibil'}</option>`).join('')}`;
+  select.innerHTML = `<option value="recent">Ultimele zile (din aplicație) · ${esc(chosenSports().map(s => SPORT_LABEL[s]).join(', '))}</option>${listed.map(d => `<option value="${esc(d.id)}">${esc(d.label)}${d.available ? ` · ${esc(plural(d.bettable, 'meci', 'meciuri'))}` : ' · indisponibil'}</option>`).join('')}`;
   if (![...select.options].some(o => o.value === simState.dataset)) simState.dataset = 'recent';
   select.value = simState.dataset;
   drawDatasetInfo(scope);
@@ -187,11 +187,20 @@ function recentStatusView(status) {
   const total = status.total || 0;
   const progress = total ? status.done / total : (status.status === 'done' ? 1 : 0);
   const label = {idle: 'Nepregătit', running: 'Se încarcă', done: 'Gata', partial: 'Parțial', failed: 'Eșuat', interrupted: 'Întrerupt'}[status.status] || status.status;
+  const sports = (status.sports || simState.sports || []).length || 1;
+  const days = status.days || simState.days;
+  // days_loaded / days_total count day × sport pairs: say so instead of "42 din 42 zile".
+  const window = `Fereastra: ${plural(days, 'zi', 'zile')} × ${plural(sports, 'sport', 'sporturi')}`;
+  const coverage = isNum(status.days_loaded) ? ` · ${status.days_loaded}/${status.days_total ?? '?'} zile-sport încărcate` : '';
+  const matches = isNum(status.matches) ? ` · ${plural(status.matches, 'meci', 'meciuri')} cu cote` : '';
+  const line = running
+    ? `${status.done || 0}/${total} cereri de zi${status.message ? ` · ${status.message}` : ''}`
+    : `${window}${coverage}${matches}`;
   return `<div class="recent-line">
       <span class="badge badge-${running ? 'pending' : status.status === 'failed' ? 'lost' : status.status === 'done' ? 'won' : 'void'}">${esc(label)}</span>
-      <span class="small">${isNum(status.days_loaded) ? `${esc(status.days_loaded)} din ${esc(status.days_total ?? '?')} zile încărcate` : ''}${isNum(status.matches) ? ` · ${esc(status.matches)} meciuri cu cote` : ''}</span>
+      <span class="small">${esc(line)}</span>
     </div>
-    ${running || total ? `<div class="progress" role="progressbar" aria-label="Pregătire zile recente" aria-valuemin="0" aria-valuemax="${esc(total)}" aria-valuenow="${esc(status.done || 0)}"><span data-w="${clamp01(progress)}"></span></div><p class="small muted">${esc(status.done || 0)}/${esc(total)} cereri de zi${status.message ? ` · ${esc(status.message)}` : ''}</p>` : status.message ? `<p class="small muted">${esc(status.message)}</p>` : ''}`;
+    ${running ? `<div class="progress" role="progressbar" aria-label="Pregătire zile recente" aria-valuemin="0" aria-valuemax="${esc(total)}" aria-valuenow="${esc(status.done || 0)}"><span data-w="${clamp01(progress)}"></span></div>` : status.message ? `<p class="small muted">${esc(status.message)}</p>` : ''}`;
 }
 
 async function refreshRecentStatus(scope) {
@@ -209,9 +218,17 @@ async function refreshRecentStatus(scope) {
 }
 
 async function prepareRecent(scope) {
-  const ok = await confirmDialog({
+  let planned = null;
+  try {
+    const status = await api(`/api/simulate/recent/status?days=${simState.days}&sports=${simState.sports.join(',')}`);
+    planned = isNum(status.planned) ? status.planned : null;
+  } catch { /* the question stays generic */ }
+  if (!scope.alive) return;
+  if (planned === 0) toast('Zilele cerute sunt deja încărcate.', 'success');
+  const cost = planned == null ? 'Fiecare zi nouă costă o cerere FlashScore' : `Se folosesc până la ${plural(planned, 'cerere', 'cereri')} FlashScore`;
+  const ok = planned === 0 || await confirmDialog({
     title: 'Pregătești ultimele zile?',
-    text: `Încarc rezultatele pentru ${simState.days} zile × ${simState.sports.length} ${simState.sports.length === 1 ? 'sport' : 'sporturi'} (plus câteva zile pentru formă). Fiecare zi nouă costă o cerere FlashScore; zilele deja salvate sunt sărite.`,
+    text: `Încarc rezultatele pentru ${plural(simState.days, 'zi', 'zile')} × ${plural(simState.sports.length, 'sport', 'sporturi')} (plus 14 zile pentru formă). ${cost}; zilele deja salvate sunt sărite.`,
     ok: 'Pregătește',
   });
   if (!ok) return;
@@ -323,7 +340,16 @@ function drawSimulation(r) {
   const out = $('#sim-output');
   const ladder = r.ladder;
   const hit = isNum(r.hit_rate) ? pct(r.hit_rate, 1) : '—';
-  const general = `<div class="kpi-grid kpi-6">
+  // A ladder restarts with fresh money after each loss: its honest numbers are the money put in,
+  // the money taken out and the difference (initial + net can go below zero, a drawdown is
+  // always 100%), so those replace the bankroll KPIs.
+  const general = ladder ? `<div class="kpi-grid kpi-5">
+      ${kpi('Câștig net', signedMoney(ladder.net), 'returnat − investit', toneOf(ladder.net))}
+      ${kpi('Total investit', money(ladder.total_invested), `${plural(ladder.ladders?.length || 0, 'scară', 'scări')} × ${money(r.initial)}`)}
+      ${kpi('Total returnat', money(ladder.total_returned), `ROI ${signedPct(r.roi, 1)} față de investit`, toneOf(r.roi))}
+      ${kpi('Bilete', esc(r.bets ?? 0), isNum(r.avg_odds) ? `cotă medie ${num(r.avg_odds)}` : '')}
+      ${kpi('Rată de câștig', hit, `${esc(r.won ?? 0)} câștigate · ${esc(r.lost ?? 0)} pierdute · ${esc(r.void ?? 0)} anulate`)}
+    </div>` : `<div class="kpi-grid kpi-6">
       ${kpi('Sold final', money(r.final), `din ${money(r.initial)}`)}
       ${kpi('Profit', signedMoney(r.profit), '', toneOf(r.profit))}
       ${kpi('ROI', signedPct(r.roi, 1), ladder ? 'față de banii investiți' : 'față de total mizat', toneOf(r.roi))}
@@ -333,48 +359,62 @@ function drawSimulation(r) {
     </div>`;
   const ladderBlock = ladder ? `
     <div class="ladder-hero card">
-      <div class="lh-main"><small>Prima scară</small><b>A ținut ${esc(ladder.first_run_days)} ${ladder.first_run_days === 1 ? 'zi' : 'zile'} la rând</b><span>vârf ${money(ladder.first_run_peak)}${ladder.first_run_status ? ` · ${esc(LADDER_STATUS[ladder.first_run_status] || ladder.first_run_status)}` : ''}</span></div>
+      <div class="lh-main"><small>Prima scară</small><b>A ținut ${esc(plural(ladder.first_run_days, 'zi', 'zile'))} la rând</b><span>vârf ${money(ladder.first_run_peak)}${ladder.first_run_status ? ` · ${esc(LADDER_STATUS[ladder.first_run_status] || ladder.first_run_status)}` : ''}</span></div>
       <div class="kpi-grid kpi-4">
-        ${kpi('Cea mai lungă serie', `${esc(ladder.longest_streak)} zile`, `vârf ${money(ladder.longest_streak_peak)}`)}
-        ${kpi('Reporniri', esc(ladder.restarts), `${esc(ladder.lost_ladders ?? '')} scări pierdute${ladder.cashed_ladders ? ` · ${esc(ladder.cashed_ladders)} încasate` : ''}`)}
-        ${kpi('Investit vs. returnat', `${money(ladder.total_invested)}`, `returnat ${money(ladder.total_returned)} · net ${signedMoney(ladder.net)}`, toneOf(ladder.net))}
+        ${kpi('Cea mai lungă serie', esc(plural(ladder.longest_streak, 'zi', 'zile')), `vârf ${money(ladder.longest_streak_peak)}`)}
+        ${kpi('Reporniri', esc(ladder.restarts), `${esc(plural(ladder.lost_ladders ?? 0, 'scară pierdută', 'scări pierdute'))}${ladder.cashed_ladders ? ` · ${esc(ladder.cashed_ladders)} încasate` : ''}`)}
         ${kpi('Zile fără bilet', esc(ladder.days_without_ticket), 'nicio combinație la cota țintă')}
+        ${kpi('Cel mai mare vârf', money(ladder.best_peak), 'soldul maxim al unei scări')}
       </div>
+      <p class="small muted">O zi „ținută” este un bilet câștigat sau anulat (miza returnată).</p>
     </div>` : '';
   const b = r.baseline;
   const baseline = b ? `<div class="card panel">
       <h2 class="panel-title">Comparație cu ${esc((b.label || 'favoritul casei').toLowerCase())}</h2>
-      <div class="table-wrap"><table class="table compact"><thead><tr><th></th><th class="num">Sold final</th><th class="num">Profit</th><th class="num">ROI</th><th class="num">Rată câștig</th><th class="num">Pariuri</th></tr></thead>
-      <tbody><tr><td><b>Strategia AI</b></td><td class="num">${money(r.final)}</td><td class="num ${toneOf(r.profit)}">${signedMoney(r.profit)}</td><td class="num">${signedPct(r.roi, 1)}</td><td class="num">${hit}</td><td class="num">${esc(r.bets)}</td></tr>
-      <tr><td>${esc(b.label || 'Favoritul casei')}</td><td class="num">${money(b.final)}</td><td class="num ${toneOf(b.profit)}">${signedMoney(b.profit)}</td><td class="num">${signedPct(b.roi, 1)}</td><td class="num">${isNum(b.hit_rate) ? pct(b.hit_rate, 1) : '—'}</td><td class="num">${esc(b.bets)}</td></tr></tbody></table></div>
+      <div class="table-wrap"><table class="table compact"><thead><tr><th></th><th class="num">${ladder ? 'Investit' : 'Sold final'}</th><th class="num">${ladder ? 'Câștig net' : 'Profit'}</th><th class="num">ROI</th><th class="num">Rată câștig</th><th class="num">Pariuri</th></tr></thead>
+      <tbody><tr><td><b>Strategia AI</b></td><td class="num">${money(ladder ? ladder.total_invested : r.final)}</td><td class="num ${toneOf(r.profit)}">${signedMoney(r.profit)}</td><td class="num">${signedPct(r.roi, 1)}</td><td class="num">${hit}</td><td class="num">${esc(r.bets)}</td></tr>
+      <tr><td>${esc(b.label || 'Favoritul casei')}</td><td class="num">${money(ladder && b.ladder ? b.ladder.total_invested : b.final)}</td><td class="num ${toneOf(b.profit)}">${signedMoney(b.profit)}</td><td class="num">${signedPct(b.roi, 1)}</td><td class="num">${isNum(b.hit_rate) ? pct(b.hit_rate, 1) : '—'}</td><td class="num">${esc(b.bets)}</td></tr></tbody></table></div>
       <p class="small ${isNum(b.profit) && isNum(r.profit) && b.profit > r.profit ? 'neg' : 'muted'}">${isNum(b.profit) && isNum(r.profit) ? (b.profit > r.profit ? 'Pe această perioadă, simplul pariu pe favoritul casei a mers mai bine decât strategia AI.' : 'Pe această perioadă, strategia AI a mers mai bine decât favoritul casei.') : ''}</p>
     </div>` : '';
   const ladders = ladder?.ladders?.length ? `<div class="card panel"><h2 class="panel-title">Scările (${esc(ladder.ladders.length)})</h2><div class="table-wrap scroll-box"><table class="table compact"><thead><tr><th>#</th><th>Început</th><th>Sfârșit</th><th class="num">Zile</th><th class="num">Vârf</th><th class="num">Final</th><th>Stare</th></tr></thead>
-      <tbody>${ladder.ladders.map((l, i) => `<tr><td>${esc(l.index ?? i + 1)}</td><td>${esc(l.start ? fmtDayMonth(l.start) : '—')}</td><td>${esc(l.end ? fmtDayMonth(l.end) : '—')}</td><td class="num">${esc(l.days)}</td><td class="num">${money(l.peak)}</td><td class="num">${money(l.final)}</td><td>${statusBadge(l.status === 'lost' ? 'lost' : l.status === 'cashed' ? 'won' : 'pending', '')} <span class="small muted">${esc(LADDER_STATUS[l.status] || l.status)}</span></td></tr>`).join('')}</tbody></table></div></div>` : '';
+      <tbody>${ladder.ladders.map((l, i) => `<tr><td>${esc(l.index ?? i + 1)}</td><td>${esc(l.start ? fmtDayMonth(l.start) : '—')}</td><td>${esc(l.end ? fmtDayMonth(l.end) : '—')}</td><td class="num">${esc(l.days)}</td><td class="num">${money(l.peak)}</td><td class="num">${money(l.final)}</td><td><span class="badge badge-${l.status === 'lost' ? 'lost' : l.status === 'cashed' ? 'won' : 'pending'}">${esc(LADDER_STATUS[l.status] || l.status)}</span></td></tr>`).join('')}</tbody></table></div></div>` : '';
   out.innerHTML = `
     ${warningsBox(r.warnings, 'Citește înainte de a trage concluzii')}
-    ${r.stopped ? `<div class="callout callout-danger" role="note"><div class="callout-icon">${icon('warn')}</div><div><b>Simularea s-a oprit pe ${esc(fmtDayMonth(r.stopped))}.</b> Banii s-au terminat${ladder && !ladder.restart_on_loss ? ' (fără repornire după pierdere)' : ''}.</div></div>` : ''}
+    ${r.stopped ? stoppedNote(r) : ''}
     <div class="section-head"><div><h2>Rezultat: ${esc(r.dataset?.label || r.dataset?.id || simState.dataset)}</h2><p class="muted small">${esc(r.start ? fmtDayMonth(r.start) : '')} – ${esc(r.end ? fmtDayMonth(r.end) : '')} · ${esc(STRATEGIES.find(s => s[0] === (ladder ? 'ladder' : r.mode))?.[1] || r.mode)}${isNum(r.target_odds) ? ` · cotă țintă ${num(r.target_odds)}` : ''}</p></div></div>
     ${ladderBlock}
     ${general}
-    <div class="card panel"><h2 class="panel-title">${ladder ? 'Evoluția banilor' : 'Evoluția soldului'}</h2><div id="equity-chart" class="chart-box"></div>
-      <div class="legend">${ladder ? '<span class="lg lg-0">Poziție totală (returnat − investit)</span><span class="lg lg-1">Soldul scării curente</span>' : '<span class="lg lg-0">Sold</span>'}<span class="lg lg-ref">Suma de pornire</span></div></div>
+    <div class="card panel"><h2 class="panel-title">${ladder ? 'Câștig net cumulat' : 'Evoluția soldului'}</h2><div id="equity-chart" class="chart-box"></div>
+      <div class="legend">${ladder ? '<span class="lg lg-0">Câștig net (returnat − investit)</span><span class="lg lg-1">Soldul scării curente</span><span class="lg lg-ref">Zero</span>' : '<span class="lg lg-0">Sold</span><span class="lg lg-ref">Suma de pornire</span>'}</div></div>
     <div class="grid grid-2">${baseline}${ladders}</div>
     <div class="section-head"><div><h2>Zi cu zi</h2><p class="muted small" id="timeline-count"></p></div></div>
     <div id="timeline" class="timeline"></div>
     <div class="load-more"><button id="timeline-more" class="btn btn-secondary" type="button" hidden>Arată mai multe zile</button></div>
-    ${r.method ? `<details class="card panel method-note"><summary>Cum a fost simulat</summary><p>${esc(r.method)}</p>${r.rules ? `<p class="small muted">Reguli: cote selecții ${esc((r.rules.leg_odds || []).join('–'))}, probabilitate × cotă ≥ ${esc(r.rules.min_value)}, interval bilet ${esc((r.rules.window || []).join('–'))} × cota țintă.</p>` : ''}${r.cache ? `<p class="small muted">Predicții: ${esc(r.cache.units)} unități, ${esc(r.cache.computed)} calculate acum, ${num(r.cache.seconds, 1)} s.</p>` : ''}</details>` : ''}
+    ${r.method ? `<details class="card panel method-note"><summary>Cum a fost simulat</summary><p>${esc(r.method)}</p>${r.rules ? `<p class="small muted">Reguli: cote selecții ${esc((r.rules.leg_odds || []).join('–'))}, probabilitate × cotă ${isNum(r.rules.max_value) ? `între ${esc(r.rules.min_value)} și ${esc(r.rules.max_value)}` : `≥ ${esc(r.rules.min_value)}`}, interval bilet ${esc((r.rules.window || []).join('–'))} × cota țintă.</p>` : ''}${r.cache ? `<p class="small muted">Predicții: ${esc(r.cache.units)} unități, ${esc(r.cache.computed)} calculate acum, ${num(r.cache.seconds, 1)} s.</p>` : ''}</details>` : ''}
 `;
   $('#sim-disclaimer').innerHTML = disclaimerBox(r.disclaimer || 'Simulare cu bani virtuali. 18+.');
   const history = r.equity || r.history || [];
   const series = ladder
-    ? [{name: 'Poziție', cls: 's0', points: history.map(p => ({x: p.date, y: isNum(p.value) ? p.value : p.bankroll}))},
+    ? [{name: 'Câștig net', cls: 's0', points: history.map(p => ({x: p.date, y: isNum(p.net) ? p.net : (isNum(p.value) ? p.value - r.initial : null)}))},
       {name: 'Scara', cls: 's1', points: history.map(p => ({x: p.date, y: p.bankroll}))}]
     : [{name: 'Sold', cls: 's0', points: history.map(p => ({x: p.date, y: p.bankroll}))}];
-  lineChart($('#equity-chart'), series, {reference: r.initial, referenceLabel: `pornire ${money(r.initial)}`, yFormat: v => money(v).replace(' RON', ''), label: 'Evoluția soldului în simulare'});
+  lineChart($('#equity-chart'), series, ladder
+    ? {reference: 0, referenceLabel: 'zero', yFormat: v => money(v).replace(' RON', ''), label: 'Câștigul net cumulat al scării'}
+    : {reference: r.initial, referenceLabel: `pornire ${money(r.initial)}`, yFormat: v => money(v).replace(' RON', ''), label: 'Evoluția soldului în simulare'});
   hydrate(out);
   drawTimeline();
   $('#timeline-more').addEventListener('click', () => { simState.shown += TIMELINE_PAGE; drawTimeline(); });
+}
+
+// Why the run stopped: an exhausted bankroll, or a ladder that lost with restarts disabled
+// (then money can be left: reinvest < 1, or earlier cash-outs).
+function stoppedNote(r) {
+  const ladder = r.ladder;
+  const when = fmtDayMonth(r.stopped);
+  const text = ladder
+    ? `Scara s-a încheiat pe ${when} după un bilet pierdut; repornirea este dezactivată. Ai recuperat ${money(ladder.total_returned)} din ${money(ladder.total_invested)} investiți (net ${signedMoney(ladder.net)}).`
+    : `Simularea s-a oprit pe ${when}: banii s-au terminat.`;
+  return `<div class="callout callout-danger" role="note"><div class="callout-icon">${icon('warn')}</div><div><b>${esc(text)}</b></div></div>`;
 }
 
 function timelineEntries(r) {

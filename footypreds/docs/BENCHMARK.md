@@ -4,7 +4,7 @@ Generat: 2026-09-25T17:53:46.044194+00:00. Meciuri evaluate: 1752 (2025-08-15 �
 
 Sursă: [Football-Data](https://www.football-data.co.uk/data.php), 5 ligi de top. Scorul meciului evaluat nu există în obiectul transmis modelului; rezultatele din aceeași zi sunt invizibile. Parametrii au fost aleși numai pe sezonul de validare 2425.
 
-Calibrarea golurilor (hartă Platt, pondere peste/sub 2.5, plafonul de valoare al recomandărilor) a fost potrivită numai pe predicțiile sezonului de validare 2425 din 16 ligi (`python -m footypreds.evaluation.tune --totals`).
+Calibrarea golurilor (hartă Platt, pondere peste/sub 2.5, plafonul de valoare al recomandărilor) a fost potrivită numai pe predicțiile sezonului de validare 2425 din 16 ligi (`python -m footypreds.evaluation.tune --totals`). Problema totalurilor (8.0 prea încrezător la peste/sub 2.5) a fost observată întâi pe sezonul de test 2025-26: rezultatul de mai jos confirmă o corecție motivată de test, cu parametri potriviți numai pe validare.
 
 ## 1X2 — toate meciurile
 

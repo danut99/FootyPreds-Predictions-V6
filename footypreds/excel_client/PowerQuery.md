@@ -103,7 +103,9 @@ let
         [
             RelativePath = cale,
             Query = Interogare,
-            ManualStatusHandling = {400, 403, 404, 405, 409, 422, 429, 500, 502, 503}
+            ManualStatusHandling = {400, 403, 404, 405, 409, 422, 429, 500, 502, 503},
+            // Simularea și prima generare a recomandărilor pot dura minute (implicit 100 s).
+            Timeout = #duration(0, 0, 10, 0)
         ]
     ),
     Stare = Value.Metadata(Raspuns)[Response.Status],

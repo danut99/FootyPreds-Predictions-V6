@@ -129,21 +129,30 @@ minimă, nu prețuri live. Serverul păstrează lista 30 de secunde.
 |---|---|---|
 | B3 | Suma (lei) | `5`: banca de pornire (la scară, miza primei zile) |
 | B4 | Set de date | `recent` (ultimele zile); `football`, `football-plus`, `tennis` (arhive), `local-football`, `local-basketball`, `local-tennis` (meciurile salvate). Butonul *Seturi de date* arată ce este disponibil |
-| B5 | Sporturi (recent) | `Toate` |
+| B5 | Sporturi (recent) | `Fotbal` (`Toate` = de 3 ori mai multe cereri FlashScore) |
 | B6 | Zile recente | `14` (1–60) |
 | B7 | Cotă țintă | `2` (1.2–100) |
 | B8 | Strategie | `scara` = un bilet pe zi la cota țintă și tot câștigul se joacă a doua zi; `bilet` = un bilet pe zi cu miză fixă 10% din sumă; `simple` = selecții simple cu miză fixă 10% |
 | B9 | Reinvestire (scara) | `1` = tot; `0.5` = jumătate din banca scării |
 | B10 | Reia după pierdere | `DA` = a doua zi pornește o scară nouă cu suma inițială (totalul investit se adună) |
 | B11, B12 | De la / Până la | gol = ultimul an al setului (nu se folosesc la `recent`) |
+| B13 | Încasează după N zile (scara) | gol = niciodată; după N bilete reușite (câștigate sau anulate) scara se încasează și pornește alta cu suma inițială, chiar și cu B10 = `NU` |
 
-Cu setul `recent`, macro-ul pornește întâi descărcarea zilelor lipsă (o cerere FlashScore
-pe zi și sport, păstrată în cache) și așteaptă cu progres în bara de stare (**Esc**
-oprește). Simularea este „oarbă”: biletul fiecărei zile se alege doar cu rezultatele de
+Cu setul `recent`, macro-ul întreabă întâi câte cereri FlashScore ar folosi descărcarea
+zilelor lipsă (o cerere pe zi și sport, plus 14 zile de formă; zilele salvate sunt sărite):
+**Da** descarcă și simulează, **Nu** simulează doar zilele deja salvate, **Anulează** oprește.
+Descărcarea așteaptă cu progres în bara de stare (**Esc** oprește); dacă se oprește la
+jumătate, simularea continuă pe zilele deja salvate, cu o notă. Simularea este „oarbă”: biletul fiecărei zile se alege doar cu rezultatele de
 dinainte de acea zi, apoi se află rezultatul. Rezultatul: rezumatul (prima scară, cea mai
 lungă scară și vârful ei, reporniri, total investit și recuperat, zile fără bilet,
 comparația cu favoritul casei), tabelul scărilor, jurnalul pe zile cu biletul fiecărei zile
-și graficul băncii.
+și graficul. La `scara` graficul arată câștigul net cumulat (recuperat − investit), unde se
+văd pierderile adunate după fiecare repornire; „Sumă inițială + câștig net” poate fi negativă.
+
+Un singur macro rulează o dată: un clic pe alt buton cât timp unul lucrează este ignorat
+(mesaj în bara de stare). Simularea și recomandările așteaptă răspunsul până la 10 minute;
+un timeout spune „Serverul încă lucrează”, nu „pornește serverul”. Schimbarea sportului din
+Panou (B3) resetează competiția din B6 la „(toate)” dacă aceasta nu există în noul sport.
 
 **Portofel.** Pariurile virtuale se plasează din aplicația web (pagina Portofel); foaia
 arată soldul, pariurile cu selecțiile lor și mișcările de bani. Bani fictivi.

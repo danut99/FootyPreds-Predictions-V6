@@ -109,7 +109,7 @@ def test_simulator_skips_refundable_markets_like_the_recommendations():
     rows = [
         row(
             "m1",
-            [("dnb_1", 0.9, 1.2), ("ah_1_-1", 0.8, 1.3), ("over_185", 0.8, 1.3), ("1", 0.6, 1.8)],
+            [("dnb_1", 0.9, 1.2), ("ah_1_-1", 0.8, 1.3), ("over_185", 0.8, 1.3), ("1", 0.55, 1.85)],
         )
     ]
     assert [leg["key"] for leg in sim.model_legs(rows[0], rules)] == ["1"]

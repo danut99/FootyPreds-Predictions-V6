@@ -10,7 +10,9 @@ this document in the same change.
 
 ## 0. Ground rules
 
-- Do not change football engine `Params` defaults or football 1X2/goals probabilities.
+- Do not change football engine `Params` defaults or football 1X2/goals probabilities without
+  re-fitting on the validation season. Since 8.1 the goals markets are calibrated (Platt map
+  on P(over 2.5)) and an over/under 2.5 price sets P(over 2.5) (docs/MODEL.md).
 - Feature code lives in **its own module** and exposes an `APIRouter`. It is wired with **one
   line** in `api.py` (see §9). Do not edit `store.py`. A feature that needs tables creates them
   itself with `CREATE TABLE IF NOT EXISTS` through `store.connect()` (see §8).
@@ -277,7 +279,8 @@ Sport-specific extras (all additive):
   settleable key only with a real price. Markets that can refund carry `"push": p_push`, and
   their `probability` is P(win | not refunded), so `1/probability` is the fair price.
   `selection` (the ledger pick) still comes only from `SELECTABLE`. Extra prices never change
-  an existing probability.
+  an existing probability, except the football over/under 2.5 price, which sets P(over 2.5) and
+  rescales the whole goals matrix (1X2 unchanged; 8.1).
 - **Basketball `expected`:** `home`, `away` (final-score points incl. overtime), `margin_sd`,
   `total_sd`, `margin`, `total`, `overtime` (P(regulation tie)) and `minutes` (48 for NBA and
   G League, 40 elsewhere). Quoted whole lines report P(win | no push) without a `push` key.
@@ -338,7 +341,10 @@ now)`, `predictions()`, `get_cache(key)`, `put_cache(key, payload, ttl)`,
 `connect()`, and `version` (bumps on every real write).
 
 `save_matches` keeps a finished row finished. It keeps `home_id`, `away_id`, `country`,
-the participant ids and the three logo fields when the new row lacks them, and it merges `odds` as a union.
+the participant ids and the three logo fields when the new row lacks them, and it merges `odds` as a union:
+a **scheduled** row's prices win, while a live/finished/called-off row only fills missing keys (prices
+carry no quote time, so the stored pre-match prices are never replaced after kickoff).
+`api.enrich` loads `matches/odds` only for a scheduled match before kickoff.
 
 **Feature tables:** create them lazily in your module:
 
@@ -453,7 +459,13 @@ optimizer chooses the likeliest legs for the requested odds.
   (`recommend.optimize`, window 0.93–1.12 × target). A plan ticket status is `pending` | `won`
   | `lost` | `void`. `GET /api/plans`, `GET /api/plans/{id}`, `POST /api/plans/{id}/refresh`
   are unchanged.
-- `/api/excel/*` (Excel client) stays **football only**: a basketball or tennis id returns 404.
+- `/api/excel/*` (Excel client) takes `sport=football|basketball|tennis` (default football); a
+  match of another sport returns 404 naming its sport. It also has the tables
+  `/api/excel/recommendations`, `/api/excel/live`, `GET /api/excel/simulate` (the query maps onto
+  the POST body, ladder included; sections days, summary, ladders, legs, equity; one run per
+  request body + store version, shared by parallel requests and kept 60 s after it finished),
+  `/api/excel/simulate/datasets`, `GET`/`POST /api/excel/simulate/recent` and `/api/excel/wallet`
+  (docs in `excel_client/README.md`).
 
 ### 10.2 Feature endpoints
 
@@ -474,8 +486,10 @@ optimizer chooses the likeliest legs for the requested odds.
   it). A target not stored yet is added using the budget left. On `refresh`, a ticket with any
   started or settled leg is **locked** (kept as is), so the track record cannot be rewritten.
 - Leg eligibility (`recommend.eligible_legs`): `candidate_legs` (scheduled, kickoff after now,
-  grade A–C, selectable, real price) and then `can_push` False, odds in `LEG_ODDS` 1.08–4.0 and
-  `probability × odds ≥ MIN_VALUE` 0.95.
+  grade A–C, selectable, real price) and then `recommend.leg_allowed`: no push probability and
+  `can_push` False, odds in `LEG_ODDS` 1.08–4.0 and `MIN_VALUE` 0.95 ≤ `probability × odds` ≤
+  `MAX_VALUE` 1.05 (a prudent heuristic cap, docs/MODEL.md). The simulator calls the same
+  predicate (`simulator.model_legs`), except its `value` mode, which has no cap.
 - Ticket (`recommend.optimize`, exact branch and bound): maximizes the product of leg
   probabilities with `total_odds` in `ODDS_WINDOW` [0.93, 1.12] × target, at most one leg per
   match and never the same team twice, at most `MAX_LEGS` legs (2 → 3, 5 → 5, 10 → 7,
@@ -665,6 +679,7 @@ Dataset ids, always listed in this order (`sim_datasets.DATASET_IDS`):
 | `football-plus` | football | benchmark + 11 more leagues in `data/benchmark/sim/raw` (`python -m footypreds.evaluation.sim_datasets --download`) |
 | `tennis` | tennis | `data/benchmark/tennis/raw` (tennis-data.co.uk ATP+WTA 2013–2026; `python -m footypreds.evaluation.tennis_eval --download`) |
 | `local-football`, `local-basketball`, `local-tennis` | that sport | finished matches in the app's store; only those with saved pre-match prices are bettable |
+| `recent` | `multi` or the one sport (+ `sports`) | the last `days` (1–60) days of the store for `sports`: every finished match before today is history; the priced matches of the window (and the priced called-off ones, settled void) are bettable, at most 150 per sport and day in board order; only the list's result prices (1/X/2, 1/2) are used |
 
 `hint` never contains an OS error or a local path. `bettable` counts matches with prices.
 `available` is False when nothing can be bet.
@@ -693,8 +708,8 @@ Dataset ids, always listed in this order (`sim_datasets.DATASET_IDS`):
 - Modes: `singles` (the K safest legs of the day, one per match, odds ≥ 1.2), `ticket` (one
   daily ticket near `target_odds`, same optimizer and window as the recommendations) and
   `value` (singles with EV ≥ 0.02 and probability ≥ 0.35). Legs follow the recommendation rules
-  (`rules.source == "recommend"`): grade A–C, odds 1.08–4.0, `probability × odds ≥ 0.95`,
-  `can_push` False.
+  (`rules.source == "recommend"`, `recommend.leg_allowed`): grade A–C, odds 1.08–4.0,
+  0.95 ≤ `probability × odds` ≤ 1.05 (no upper cap in `value` mode), `can_push` False.
 - **Blind rule:** walk-forward by day. For day D, the model sees only results of days before
   D (and the analyzers' own kickoff − 3h cutoff). The fixture it receives is rebuilt from
   pre-match fields (teams, kickoff, competition, prices): no score, status, finish type or live
@@ -734,7 +749,7 @@ Dataset ids, always listed in this order (`sim_datasets.DATASET_IDS`):
               "growth": -0.057, "betting_days": 20, "stopped": null, "staking": "flat",
               "rows_total": 20},
  "method": "Walk-forward orb: pentru fiecare zi, modelul vede doar rezultatele din zilele anterioare; …",
- "rules": {"source": "recommend", "leg_odds": [1.08, 4.0], "min_value": 0.95,
+ "rules": {"source": "recommend", "leg_odds": [1.08, 4.0], "min_value": 0.95, "max_value": 1.05,
            "single_min_odds": 1.2, "window": [0.93, 1.12], "max_legs": 3},
  "warnings": ["Cotele istorice sunt medii de piață; la o casă reală prețul obținut putea fi altul.", …],
  "warning": "…the warnings joined in one sentence…",
@@ -744,6 +759,32 @@ Dataset ids, always listed in this order (`sim_datasets.DATASET_IDS`):
 
 For a ticket row, the top-level `match_id`/`home`/`key`/… fields describe the first leg; use
 `legs`. `baseline` bets the bookmaker favourite with the same staking and bet count.
+
+**Ladder** (`"strategy": "ladder"`, extra fields `target_odds` 1.2–100, `reinvest` (0, 1] default 1,
+`restart_on_loss` default true, `max_days` 1–365 or null; `dataset "recent"` also takes `sports`
+and `days`). One ticket per day (same optimizer and leg rule as the recommendations); stake =
+floor2(reinvest × ladder bankroll). A lost ticket ends the ladder; with `restart_on_loss` a new
+ladder starts on the next ticket day with the initial amount (new money invested), otherwise the
+run stops (`ladder.stopped`). A void ticket refunds and **counts as a survived day** (`days`,
+`longest_streak`, and towards `max_days`). After `max_days` survived tickets the ladder is
+`cashed` and a new one starts with the initial amount **even when `restart_on_loss` is false**.
+Response: `mode = strategy = "ladder"`, `days` is the per-day LIST (count in `days_count`):
+`{date, ticket|null {legs, total_odds, probability, ev}, stake, result won|lost|void|skipped,
+reason (skipped), payout, odds, probability, bankroll_before, bankroll_after, ladder_index,
+streak_day}`; `ladder = {first_run_days, first_run_peak, first_run_status, longest_streak,
+longest_streak_peak, best_peak, ladders: [{index, start, end, days, tickets, won, void, invested,
+peak, final, status lost|cashed|open}], restarts, lost_ladders, cashed_ladders, total_invested,
+total_returned, net, days_without_ticket, stopped}`; `equity` entries `{date, bankroll (current
+ladder), net (returned − invested so far), value, ladder_index}`. `summary.final = initial + net`
+(can be negative after restarts); the honest figures are `total_invested`, `total_returned`, `net`.
+
+**Recent days loader.** `POST /api/simulate/recent/prepare {days 1..60, sports, warmup_days 0..30
+(default 14)}` → 202 with the state; it loads the missing days newest first (one list request
+per day and sport, at most 90 uncached requests per call → `partial`). `GET
+/api/simulate/recent/status[?days=&sports=]` → `{status idle|running|done|partial|failed|
+interrupted, done, total, days_loaded, days_total (day × sport pairs), matches, loaded_matches,
+requests, message, days, sports, warmup_days, budget, planned}`; `planned` (not while running)
+is the number of list requests a prepare call would spend (capped at the budget).
 
 #### Wallet (`wallet.py`, routed through `sim_api.py`)
 
@@ -853,11 +894,12 @@ the prediction step uses a process pool on Windows.
 
 ## 14. Known limitations (measured, not hidden)
 
-- The simulator shows the AI tickets and singles **losing money** on every football dataset
-  tested, and doing worse than simply betting the bookmaker favourite. The "safest" football
-  legs are mostly over/under 2.5, where the model is overconfident (2025-26, 16 leagues: under
-  2.5 at 0.63 predicted vs 0.52 observed). Fixing it needs a model change (blend totals with
-  market prices or calibrate on the validation season), not a UI change.
+- Goals are calibrated since 8.1 (over 2.5 log loss equals the bookmakers' with a price), but the
+  model has **no measured edge** over market prices: the simulator still loses about the
+  bookmaker margin on every football dataset, often more than betting the favourite. Football
+  2024-25 simulator/ladder numbers are in-sample (the calibration season); football-data sets
+  use average prices, so over/under legs never pass the value floor there. The daily AI tickets
+  can share a leg (the UI marks it); basketball totals are not calibrated on odds data.
 - Tennis winner probabilities equal the margin-free market price when prices exist; the model
   has no edge on the winner market (validation ROI of "value" bets −32%).
 - The basketball market weight (0.85) is a conservative default: there is no basketball odds
@@ -866,7 +908,8 @@ the prediction step uses a process pool on Windows.
 - Recommendations use the UTC day (`store.matches_on`): for Romania (UTC+3) a game at 00:30
   local time belongs to the previous UTC day.
 - Ticket probability assumes independent legs.
-- The Excel client and the demo are football only.
+- The demo is football only. The Excel VBA module is checked by a static linter only (not
+  compiled in a real Excel in CI).
 
 ## 15. Media: logos, flags and the image proxy (`footypreds/media.py`)
 

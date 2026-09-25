@@ -6,9 +6,12 @@
 Visits every page (#/, #/meciuri, #/meci/..., #/live, #/bilete, #/simulator, #/portofel,
 #/rezultate, #/metoda) on desktop (1440x900) and phone (390x844) and clicks the main flows:
 switch sports, open a football/basketball/tennis match, refresh live, generate a ticket and
-ask for another variant, play it in the virtual wallet, prepare the recent days and run a
-ladder simulation. It fails on console errors, page errors, CSP violations, failed same-origin
-requests (HTTP >= 400 or network failure) and horizontal page scroll. Screenshots are saved in
+ask for another variant until the pool is used up (then reset the exclusions), play a ticket
+with an empty virtual wallet (deposit dialog, then the bet), open a live match from the home
+strip, close the drawer by navigating back, prepare the recent days and run a ladder
+simulation. It fails on console errors, page errors, CSP violations, failed same-origin
+requests (HTTP >= 400 or network failure, except the ones a flow expects) and horizontal page
+scroll. Screenshots are saved in
 footypreds/artifacts/. Against the real server (http://127.0.0.1:8000) the flows spend
 FlashScore requests: use the mock server for routine checks.
 """
@@ -38,6 +41,8 @@ class Smoke:
     def __init__(self, browser, base, name, viewport):
         self.base, self.name, self.viewport = base, name, viewport
         self.problems = []
+        # (method, path, status) answers a flow provokes on purpose (e.g. a bet with 0 RON).
+        self.expected = set()
         self.origin = urlparse(base).netloc
         self.page = browser.new_page(viewport=viewport)
         self.page.set_default_timeout(TIMEOUT)
@@ -52,7 +57,13 @@ class Smoke:
 
     def console(self, message):
         if message.type == "error":
-            self.fail(f"console: {message.text} @ {message.location.get('url', '')}")
+            url = message.location.get("url", "")
+            # The browser also logs the HTTP error of an answer a flow expects.
+            if message.text.startswith("Failed to load resource") and any(
+                urlparse(url).path == path for _, path, _ in self.expected
+            ):
+                return
+            self.fail(f"console: {message.text} @ {url}")
 
     def same_origin(self, url):
         return urlparse(url).netloc == self.origin
@@ -65,6 +76,9 @@ class Smoke:
 
     def response(self, response):
         if self.same_origin(response.url) and response.status >= 400:
+            key = (response.request.method, urlparse(response.url).path, response.status)
+            if key in self.expected:
+                return
             self.fail(f"HTTP {response.status}: {response.request.method} {response.url}")
 
     # -- helpers -------------------------------------------------------------------------------
@@ -87,6 +101,10 @@ class Smoke:
     def confirm(self):
         self.page.click("#dialog [data-confirm]")
 
+    def in_view(self, selector):
+        box = self.page.locator(selector).bounding_box()
+        return bool(box) and box["y"] < self.viewport["height"] and box["y"] + box["height"] > 0
+
     # -- pages and flows -----------------------------------------------------------------------
 
     def home(self):
@@ -101,6 +119,14 @@ class Smoke:
         self.page.wait_for_selector("#tickets .ticket")
         self.page.click("[data-sport-filter='all']")
         self.page.wait_for_selector("#tickets .ticket")
+        # A live card opens that match's drawer on #/live; going back closes the drawer.
+        if self.page.locator("#live-strip .live-mini").count():
+            self.page.locator("#live-strip .live-mini").first.click()
+            self.page.wait_for_selector("#drawer[open] .drawer-score")
+            self.page.go_back()
+            self.page.wait_for_selector("#tickets .ticket")
+            if self.page.evaluate("document.querySelector('#drawer').open"):
+                self.fail("home: the live drawer stayed open after navigating back")
 
     def board(self):
         self.goto("meciuri", ".match-card")
@@ -115,6 +141,11 @@ class Smoke:
                 self.check(f"meciuri-{sport}")
         self.page.click("[data-switch='all']")
         self.page.wait_for_selector("#board-tennis .match-card")
+        # The "Live" filter covers today's games in play (every page is loaded first).
+        self.page.select_option("#board-status", "live")
+        self.page.wait_for_selector("#board-football .match-card.status-live")
+        self.check("meciuri-live")
+        self.page.select_option("#board-status", "all")
 
     def matches(self):
         for sport in ("football", "basketball", "tennis"):
@@ -139,16 +170,58 @@ class Smoke:
         self.page.click("#live-pause")
         self.check("live")
 
+    def generated(self):
+        self.page.wait_for_selector("#generated-ticket")
+        self.page.wait_for_function("!document.querySelector('#gen-go').disabled")
+
     def tickets(self):
         self.goto("bilete", "#gen-form")
         self.page.click("[data-target='5']")
         self.page.click("#gen-go")
-        self.page.wait_for_selector("#generated-ticket")
+        self.generated()
+        if not self.in_view("#gen-output"):
+            self.fail("bilete: the generated ticket is not scrolled into view")
         self.page.click("#gen-other")
-        self.page.wait_for_selector("#generated-ticket")
+        self.generated()
         self.check("bilete")
+        # "Altă variantă" until the pool is used up, then "Resetează excluderile".
+        for _ in range(25):
+            if not self.page.locator("#gen-other").count():
+                break
+            self.page.click("#gen-other")
+            self.generated()
+        if self.page.locator("#gen-reset").count():
+            self.check("bilete-epuizat")
+            self.page.click("#gen-reset")
+            self.generated()
+            if not self.page.locator("#gen-other").count():
+                self.fail("bilete: resetting the exclusions gave no playable ticket")
+        # Tennis only at x100: an unavailable ticket must still render without errors.
+        self.page.click("[data-gsport='football']")
+        self.page.click("[data-gsport='basketball']")
+        self.page.click("[data-target='100']")
+        self.page.click("#gen-go")
+        self.generated()
+        self.check("bilete-tenis-x100")
 
     def wallet(self):
+        # Empty wallet: the bet answers 400, the UI offers a deposit and then places the bet.
+        self.goto("portofel", "#deposit-form")
+        self.page.click("#wallet-reset")
+        self.confirm()
+        self.page.wait_for_selector(".toast-success")
+        self.expected.add(("POST", "/api/wallet/bet", 400))
+        self.goto("", "#tickets .bet-form")
+        self.page.locator("#tickets .bet-form button[type='submit']").first.click()
+        self.page.wait_for_selector("#dialog[open] input[name='amount']")
+        self.check("depunere-si-pariu")
+        self.page.click("#dialog [data-quick='100']")
+        self.confirm()
+        self.page.wait_for_selector(".toast-success")
+        self.expected.discard(("POST", "/api/wallet/bet", 400))
+        self.page.wait_for_function(
+            "(document.querySelector('#wallet-balance')?.textContent || '').includes('RON')"
+        )
         self.goto("portofel", "#deposit-form")
         self.page.fill("#deposit-amount", "250")
         self.page.click("#deposit-form button[type='submit']")
@@ -168,7 +241,12 @@ class Smoke:
             self.page.fill("#sim-days", "7")
             self.page.dispatch_event("#sim-days", "change")
             self.page.click("#sim-prepare")
-            self.confirm()
+            # The question shows the planned FlashScore requests (none left: no question).
+            self.page.wait_for_selector(
+                "#dialog[open] [data-confirm], .toast-success:has-text('deja încărcate')"
+            )
+            if self.page.locator("#dialog[open] [data-confirm]").count():
+                self.confirm()
             self.page.wait_for_function(
                 "!document.querySelector('#sim-prepare').disabled"
                 " && !!document.querySelector('#recent-status .recent-line')",
@@ -177,7 +255,9 @@ class Smoke:
             self.page.click("input[name='strategy'][value='ladder']", force=True)
             self.page.fill("#sim-bankroll", "5")
             self.page.click("#sim-run")
-            self.page.wait_for_selector("#sim-output .ladder-hero, #sim-output .state-error")
+            self.page.wait_for_selector(
+                "#sim-output .ladder-hero, #sim-output .state-error, #sim-output .state-invalid"
+            )
             self.check("simulator-recent")
         self.page.select_option("#sim-dataset", "football")
         self.page.click("input[name='strategy'][value='ladder']", force=True)
@@ -187,6 +267,29 @@ class Smoke:
         self.page.wait_for_selector("#sim-output .ladder-hero", timeout=300_000)
         self.page.wait_for_selector("#timeline .day-card")
         self.check("simulator")
+        # Ladder with reinvest 50%, cash-out after 3 days and no restart: the stop note says
+        # how much money is left, never "the money ran out".
+        self.page.fill("#sim-maxdays", "3")
+        self.page.uncheck("#sim-restart")
+        self.page.eval_on_selector("#sim-reinvest", "el => { el.value = '50'; }")
+        self.page.dispatch_event("#sim-reinvest", "input")
+        self.page.click("#sim-run")
+        self.page.wait_for_selector("#sim-output .ladder-hero", timeout=300_000)
+        text = self.page.inner_text("#sim-output")
+        if "Banii s-au terminat" in text or "apr.." in text:
+            self.fail("simulator: misleading stop note for a ladder without restart")
+        self.check("simulator-fara-repornire")
+        self.page.check("#sim-restart")
+        self.page.fill("#sim-maxdays", "")
+        self.page.eval_on_selector("#sim-reinvest", "el => { el.value = '100'; }")
+        self.page.dispatch_event("#sim-reinvest", "input")
+
+    def dark(self):
+        # Dark theme: the live pills and the 18+ badge keep readable contrast.
+        self.page.emulate_media(color_scheme="dark")
+        self.goto("live", ".live-card")
+        self.check("live-intunecat")
+        self.page.emulate_media(color_scheme="light")
 
     def static_pages(self):
         self.goto("rezultate", "#ledger .kpi-grid, #ledger .state")
@@ -203,6 +306,7 @@ class Smoke:
 
     def run(self, full):
         steps = [self.home, self.board, self.matches, self.live, self.tickets, self.static_pages]
+        steps += [self.dark]
         steps += [self.wallet, self.simulator_full] if full else [self.simulator_quick]
         for step in steps:
             name = step.__name__

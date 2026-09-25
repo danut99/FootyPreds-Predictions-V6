@@ -792,3 +792,26 @@ details > summary.panel-title { cursor: pointer; margin: 0; }
 .footer-inner { max-width: 1320px; margin: 0 auto; padding: 18px 24px 26px; color: var(--muted); font-size: .86rem; display: flex; justify-content: space-between; gap: 10px 24px; flex-wrap: wrap; }
 .footer-inner p { margin: 0; display: flex; align-items: center; gap: 8px; }
 @media (max-width: 640px) { .footer-inner { padding: 16px; } }
+
+/* --- review fixes ------------------------------------------------------------------------ */
+/* Board: every card names its competition (one grid per sport, no one-card rows). */
+.mc-comp { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: .74rem; font-weight: 700; color: var(--muted); margin-bottom: 2px; }
+.mc-comp span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+/* Home: virtual balance next to the bet forms. */
+.wallet-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-size: .84rem; text-decoration: none; }
+.wallet-chip span { color: var(--muted); }
+.wallet-chip.empty { border-color: color-mix(in srgb, var(--warn) 55%, transparent); background: var(--warn-soft); }
+.wallet-chip .icon { width: 16px; height: 16px; }
+/* A leg that also sits on another ticket of the day. */
+.shared-note { font-size: .72rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--warn-soft); color: var(--text); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); }
+/* 4xx: settings do not fit (not a network error). */
+.state-invalid .state-art { background: var(--warn-soft); color: var(--warn); }
+/* Tennis form rows have no venue column. */
+.last-list.no-venue li { grid-template-columns: 22px 54px 18px minmax(0, 1fr) auto; }
+.last-list.no-venue .comp { grid-column: 4 / -1; }
+/* Dark theme: white text on the live/18+ pills needs a darker background (WCAG AA). */
+@media (prefers-color-scheme: dark) {
+  .pill-live, .live-pill { background: #be123c; color: #fff; }
+  .age { background: #b91c1c; color: #fff; }
+  .lc-goals.big small { color: #fda4af; }
+}

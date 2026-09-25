@@ -55,6 +55,8 @@ Private Const CELL_STATUS As String = "B15"
 
 ' Foaia ascunsa Liste: sportul predictiilor incarcate (analiza unui rand il foloseste).
 Private Const LIST_LOADED_SPORT As String = "G1"
+' Sportul listei de competitii din Liste!A:B (Panou B6 se reseteaza cand sportul difera).
+Private Const LIST_COMP_SPORT As String = "G2"
 
 ' Foaia Recomandari: setari pe randurile 3-5, butonul pe randul 6, rezultate de la randul 8.
 Private Const RECO_SPORTS As String = "B3"
@@ -77,7 +79,8 @@ Private Const SIM_REINVEST As String = "B9"
 Private Const SIM_RESTART As String = "B10"
 Private Const SIM_START As String = "B11"
 Private Const SIM_END As String = "B12"
-Private Const SIM_FIRST_ROW As Long = 15
+Private Const SIM_MAXDAYS As String = "B13"
+Private Const SIM_FIRST_ROW As Long = 16
 ' Cat asteapta simularea incarcarea zilelor recente (secunde).
 Private Const RECENT_MAX_WAIT As Long = 600
 
@@ -87,9 +90,15 @@ Private Const ERR_INPUT As Long = vbObjectError + 1003
 
 Private Const CONNECT_TIMEOUT_MS As Long = 5000
 Private Const RECEIVE_TIMEOUT_MS As Long = 180000
+' Simularea si recomandarile pot calcula minute intregi la prima rulare.
+Private Const LONG_RECEIVE_TIMEOUT_MS As Long = 600000
+' WinHTTP / ServerXMLHTTP: ERROR_WINHTTP_TIMEOUT (&H80072EE2).
+Private Const HTTP_TIMEOUT_ERROR As Long = -2147012894
 Private Const MAX_COLUMN_WIDTH As Double = 45
 
 ' Dimensiunea ultimului tabel scris de WriteTable.
+' Un macro ruleaza deja (DoEvents lasa butoanele sa porneasca altul): vezi IsBusy.
+Private m_busy As Boolean
 Private m_rows As Long
 Private m_cols As Long
 ' X-Total-Count al ultimului raspuns (-1 daca lipseste): meciurile zilei dupa filtre.
@@ -104,6 +113,7 @@ Private m_analyzed As String
 Public Sub Setup()
     Dim failNumber As Long
     Dim failText As String
+    If IsBusy() Then Exit Sub
     On Error GoTo Fail
     BeginWork Ro("Se creeaz{a} foile...")
     BuildWorkbook
@@ -122,6 +132,7 @@ Public Sub VerificaServer()
     Dim failText As String
     Dim body As String
     Dim message As String
+    If IsBusy() Then Exit Sub
     On Error GoTo Fail
     EnsureReady
     BeginWork Ro("Se verific{a} serverul...")
@@ -162,6 +173,7 @@ Public Sub IncarcaPredictii()
     Dim matchCount As Long
     Dim totalCount As Long
     Dim counted As String
+    If IsBusy() Then Exit Sub
     On Error GoTo Fail
     EnsureReady
     dayText = PanelDay()
@@ -178,6 +190,9 @@ Public Sub IncarcaPredictii()
     ' Limita din B9 taie ziua: spune cate meciuri lipsesc in loc sa le ascunda in tacere.
     If totalCount > matchCount Then
         counted = matchCount & " din " & totalCount & Ro(" meciuri (m{a}re{s}te Limita din Panou B9 sau filtreaz{a} dup{a} competi{t}ie)")
+    End If
+    If matchCount = 0 And Len(PanelCompetition()) > 0 Then
+        counted = counted & Ro(" (filtru de competi{t}ie activ {i^}n Panou B6)")
     End If
     ws.Range("A1").Value = Ro("Predic{t}ii ") & SportLabel(sport) & " " & dayText & ": " & counted
     FinishPredictions ws, matchCount
@@ -199,6 +214,7 @@ Public Sub AnalizaMeci()
     Dim sport As String
     Dim rowNumber As Long
     Dim onPredictions As Boolean
+    If IsBusy() Then Exit Sub
     On Error GoTo Fail
     EnsureReady
     If TypeName(ActiveSheet) = "Worksheet" Then onPredictions = (ActiveSheet.Name = SH_PRED)
@@ -236,6 +252,7 @@ Public Sub AnalizaMeciDinRand(ByVal rowNumber As Long)
     Dim failNumber As Long
     Dim failText As String
     Dim matchId As String
+    If IsBusy() Then Exit Sub
     On Error GoTo Fail
     If rowNumber <= PRED_HEADER Then Exit Sub
     matchId = PredictionCell(rowNumber, "match_id")
@@ -268,6 +285,7 @@ Public Sub AnalizaCompletaTop()
     Dim message As String
     Dim stopReason As String
     Dim question As String
+    If IsBusy() Then Exit Sub
     On Error GoTo Fail
     EnsureReady
     Set ws = ThisWorkbook.Worksheets(SH_PRED)
@@ -346,6 +364,7 @@ Public Sub IncarcaValoare()
     Dim dayText As String
     Dim sport As String
     Dim nextRow As Long
+    If IsBusy() Then Exit Sub
     On Error GoTo Fail
     EnsureReady
     dayText = PanelDay()
@@ -376,6 +395,7 @@ Public Sub IncarcaTrackRecord()
     Dim metricsEnd As Long
     Dim calibrationEnd As Long
     Dim nextRow As Long
+    If IsBusy() Then Exit Sub
     On Error GoTo Fail
     EnsureReady
     BeginWork Ro("Se {i^}ncarc{a} registrul de predic{t}ii...")
@@ -407,6 +427,7 @@ Public Sub IncarcaRecomandari()
     Dim singles As String
     Dim warnings As String
     Dim nextRow As Long
+    If IsBusy() Then Exit Sub
     On Error GoTo Fail
     EnsureReady
     dayText = PanelDay()
@@ -446,6 +467,7 @@ Public Sub ActualizeazaLive()
     Dim oddsNote As String
     Dim nextRow As Long
     Dim liveCount As Long
+    If IsBusy() Then Exit Sub
     On Error GoTo Fail
     EnsureReady
     sport = PanelSport()
@@ -485,6 +507,10 @@ Public Sub RuleazaSimularea()
     Dim ladderEnd As Long
     Dim daysTop As Long
     Dim dayCount As Long
+    Dim equity As String
+    Dim equityCount As Long
+    Dim finishText As String
+    If IsBusy() Then Exit Sub
     On Error GoTo Fail
     EnsureReady
     query = SimulationQuery()
@@ -495,16 +521,26 @@ Public Sub RuleazaSimularea()
     ladders = ApiTable("GET", "/api/excel/simulate", query & "&section=ladders")
     daysLog = ApiTable("GET", "/api/excel/simulate", query & "&section=days")
     Set ws = ThisWorkbook.Worksheets(SH_SIM)
-    ClearFrom ws, SIM_FIRST_ROW
+    ClearFrom ws, SIM_FIRST_ROW - 1
     nextRow = WriteRecord(ws, SIM_FIRST_ROW, 1, Ro("Rezultatul simul{a}rii"), summary, LayoutSimSummary())
     ladderEnd = WriteTable(ws, SIM_FIRST_ROW, 4, Ro("Sc{a}ri (fiecare pornire cu suma ini{t}ial{a})"), ladders, LayoutSimLadders())
     If ladderEnd > nextRow Then nextRow = ladderEnd
     daysTop = nextRow
     nextRow = WriteTable(ws, daysTop, 1, Ro("Jurnal pe zile (biletul fixat {i^}nainte de rezultate)"), daysLog, LayoutSimDays())
     dayCount = m_rows
-    If dayCount > 1 Then
+    If SimStrategy() = "scara" Then
+        ' Scara: banca scarii revine la suma initiala la fiecare repornire, deci graficul arata
+        ' castigul net cumulat (recuperat - investit), unde se vad pierderile adunate.
+        equity = ApiTable("GET", "/api/excel/simulate", query & "&section=equity")
+        WriteTable ws, SIM_FIRST_ROW, 26, Ro("C{a^}{s}tig net cumulat"), equity, LayoutSimEquity()
+        equityCount = m_rows
+        If equityCount > 1 Then
+            AddEquityChart ws, SIM_FIRST_ROW + 2, equityCount, 26 + LayoutPos(LayoutSimEquity(), "net") - 1, 26 + LayoutPos(LayoutSimEquity(), "date") - 1, _
+                ws.Cells(SIM_FIRST_ROW, 16).Left, ws.Cells(SIM_FIRST_ROW, 16).Top, Ro("C{a^}{s}tig net cumulat")
+        End If
+    ElseIf dayCount > 1 Then
         AddEquityChart ws, daysTop + 2, dayCount, LayoutPos(LayoutSimDays(), "bankroll_after"), LayoutPos(LayoutSimDays(), "date"), _
-            ws.Cells(SIM_FIRST_ROW, 16).Left, ws.Cells(SIM_FIRST_ROW, 16).Top
+            ws.Cells(SIM_FIRST_ROW, 16).Left, ws.Cells(SIM_FIRST_ROW, 16).Top, Ro("Evolu{t}ia b{a}ncii")
     End If
     warnings = FieldOf(summary, "warnings")
     If Len(recentNote) > 0 Then
@@ -516,7 +552,13 @@ Public Sub RuleazaSimularea()
         nextRow = nextRow + 1
     End If
     WriteNote ws, nextRow, Ro("Simulare cu bani virtuali pe meciuri din trecut. Estim{a}ri statistice, nu garan{t}ii. 18+.")
-    EndWork Ro("Simulare gata: final ") & FieldOf(summary, "final") & ", profit " & FieldOf(summary, "profit") & " (" & dayCount & Ro(" r{a^}nduri).")
+    If SimStrategy() = "scara" Then
+        finishText = Ro("Simulare gata: investit ") & FieldOf(summary, "total_invested") & Ro(", recuperat ") _
+            & FieldOf(summary, "total_returned") & Ro(", c{a^}{s}tig net ") & FieldOf(summary, "net")
+    Else
+        finishText = Ro("Simulare gata: final ") & FieldOf(summary, "final") & ", profit " & FieldOf(summary, "profit")
+    End If
+    EndWork finishText & " (" & dayCount & Ro(" r{a^}nduri).")
     ws.Activate
     Exit Sub
 Fail:
@@ -532,6 +574,7 @@ Public Sub IncarcaSeturiDate()
     Dim ws As Worksheet
     Dim body As String
     Dim nextRow As Long
+    If IsBusy() Then Exit Sub
     On Error GoTo Fail
     EnsureReady
     BeginWork Ro("Se citesc seturile de date ale simulatorului...")
@@ -559,6 +602,7 @@ Public Sub IncarcaPortofel()
     Dim history As String
     Dim summaryEnd As Long
     Dim nextRow As Long
+    If IsBusy() Then Exit Sub
     On Error GoTo Fail
     EnsureReady
     BeginWork Ro("Se {i^}ncarc{a} portofelul virtual...")
@@ -783,7 +827,16 @@ Private Sub LoadCompetitions(ByVal dayText As String, ByVal sport As String)
     ws.Range("A:B").ClearContents
     ws.Range(ws.Cells(1, 1), ws.Cells(n + 1, 2)).NumberFormat = "@"
     ws.Range(ws.Cells(1, 1), ws.Cells(n + 1, 2)).Value = out
+    ws.Range(LIST_COMP_SPORT).NumberFormat = "@"
+    ws.Range(LIST_COMP_SPORT).Value = sport
     SetListValidation ThisWorkbook.Worksheets(SH_PANEL).Range(CELL_COMP), "=" & SH_LISTS & "!$A$1:$A$" & (n + 1), False
+    ' Eticheta din B6 care nu exista in lista noua (alt sport sau alta zi) revine la (toate).
+    label = Trim$(SafeText(PanelValue(CELL_COMP)))
+    If Len(label) > 0 And label <> Ro("(toate)") Then
+        If Application.WorksheetFunction.CountIf(ws.Range(ws.Cells(1, 1), ws.Cells(n + 1, 1)), label) = 0 Then
+            If InStr(label, "|") = 0 And InStr(label, ":") = 0 Then ResetCompetition
+        End If
+    End If
 Quiet:
     ' Lista e optionala, dar Esc (eroarea 18) trebuie sa opreasca macro-ul apelant.
     If Err.Number = 18 Then Err.Raise 18
@@ -799,9 +852,29 @@ Private Function PrepareRecentDays(ByVal dayCount As Long, ByVal sports As Strin
     Dim query As String
     Dim loadState As String
     Dim waited As Long
+    Dim planned As Long
+    Dim answer As Long
+    Dim question As String
     query = "days=" & dayCount & "&sports=" & UrlEncode(sports)
-    body = ApiTable("POST", "/api/excel/simulate/recent", query)
+    body = ApiTable("GET", "/api/excel/simulate/recent", query)
     loadState = FieldOf(body, "status")
+    If loadState <> "running" Then
+        planned = CLng(Val(FieldOf(body, "planned")))
+        If planned <= 0 Then Exit Function
+        question = Ro("Se folosesc p{a^}n{a} la ") & planned & Ro(" cereri FlashScore (o cerere pe zi {s}i sport, ")
+        question = question & Ro("inclusiv zilele de form{a} de dinainte). Zilele salvate sunt s{a}rite.") & vbLf & vbLf
+        question = question & Ro("Da = {i^}ncarc{a} {s}i simuleaz{a}; Nu = simuleaz{a} doar zilele deja {i^}nc{a}rcate; Anuleaz{a} = oprire.")
+        answer = vbNo
+        ' Excel ascuns (build_xlsm.py): nicio cerere cheltuita fara acord.
+        If Application.Visible Then answer = MsgBox(Plain(question), vbQuestion + vbYesNoCancel, APP_TITLE)
+        If answer = vbCancel Then Err.Raise ERR_INPUT, APP_TITLE, Ro("Simulare anulat{a}.")
+        If answer <> vbYes Then
+            PrepareRecentDays = Ro("Zilele lips{a} nu au fost {i^}nc{a}rcate; simularea folose{s}te doar zilele salvate.")
+            Exit Function
+        End If
+        body = ApiTable("POST", "/api/excel/simulate/recent", query)
+        loadState = FieldOf(body, "status")
+    End If
     Do While loadState = "running"
         If waited >= RECENT_MAX_WAIT Then
             Err.Raise ERR_API, APP_TITLE, Ro("Zilele recente se {i^}ncarc{a} {i^}nc{a} (") & FieldOf(body, "done") & "/" _
@@ -815,7 +888,12 @@ Private Function PrepareRecentDays(ByVal dayCount As Long, ByVal sports As Strin
         body = ApiTable("GET", "/api/excel/simulate/recent", query)
         loadState = FieldOf(body, "status")
     Loop
-    If loadState = "failed" Then
+    If loadState = "failed" Or loadState = "interrupted" Then
+        ' Zilele deja salvate raman: simularea continua pe ele, cu mesajul serverului ca nota.
+        If Val(FieldOf(body, "days_loaded")) > 0 Or Val(FieldOf(body, "matches")) > 0 Then
+            PrepareRecentDays = Ro("{I^}nc{a}rcarea nu s-a terminat: ") & FieldOf(body, "message")
+            Exit Function
+        End If
         Err.Raise ERR_API, APP_TITLE, Ro("Zilele recente nu s-au putut {i^}nc{a}rca: ") & FieldOf(body, "message")
     End If
     ' "partial": limita de cereri a fost atinsa; simularea ruleaza pe zilele deja incarcate.
@@ -846,6 +924,7 @@ Private Function SimulationQuery() As String
             query = query & "&strategy=flat&mode=singles&stake=" & NumToStr(amount / 10)
         Case Else
             query = query & "&strategy=ladder&target_odds=" & NumToStr(SimOdds()) & "&reinvest=" & NumToStr(SimReinvest())
+            If SimMaxDays() > 0 Then query = query & "&max_days=" & SimMaxDays()
             If SheetYes(SH_SIM, SIM_RESTART) Then
                 query = query & "&restart_on_loss=1"
             Else
@@ -877,6 +956,11 @@ End Function
 
 Private Function SimDays() As Long
     SimDays = SheetLong(SH_SIM, SIM_DAYS, 14, 1, 60)
+End Function
+
+' Incaseaza scara dupa N bilete reusite (0 = niciodata).
+Private Function SimMaxDays() As Long
+    SimMaxDays = SheetLong(SH_SIM, SIM_MAXDAYS, 0, 0, 365)
 End Function
 
 Private Function SimOdds() As Double
@@ -1293,9 +1377,10 @@ End Function
 Private Function LayoutSimSummary() As String
     Dim s As String
     s = "dataset_label|Set de date|txt;strategy|Strategie|txt;mode|Mod|txt;target_odds|Cot{a} {t}int{a}|num;"
-    s = s & "start|De la|txt;end|P{a^}n{a} la|txt;initial|Suma ini{t}ial{a}|num;final|Rezultat final|num;"
-    s = s & "profit|Profit|num;total_invested|Total investit (sc{a}ri)|num;total_returned|Total recuperat|num;"
-    s = s & "net|C{a^}{s}tig net|num;roi|ROI|ev;bets|Bilete / pariuri|int;won|C{a^}{s}tigate|int;"
+    s = s & "start|De la|txt;end|P{a^}n{a} la|txt;initial|Suma ini{t}ial{a}|num;"
+    s = s & "total_invested|Total investit (toate sc{a}rile)|num;total_returned|Total recuperat|num;"
+    s = s & "net|C{a^}{s}tig net (recuperat - investit)|num;final|Suma ini{t}ial{a} + c{a^}{s}tig net|num;"
+    s = s & "profit|Profit|num;roi|ROI|ev;bets|Bilete / pariuri|int;won|C{a^}{s}tigate|int;"
     s = s & "lost|Pierdute|int;void|Anulate|int;hit_rate|Rat{a} de reu{s}it{a}|pc0;"
     s = s & "first_run_days|Prima scar{a}: zile c{a^}{s}tigate|int;first_run_peak|Prima scar{a}: v{a^}rf|num;"
     s = s & "longest_streak|Cea mai lung{a} scar{a} (zile)|int;longest_streak_peak|V{a^}rful ei|num;"
@@ -1319,6 +1404,10 @@ Private Function LayoutSimDays() As String
     s = s & "payout|Plat{a}|num;bankroll_after|Banc{a} dup{a}|num;ladder_index|Scara|int;"
     s = s & "streak_day|Bilet nr. {i^}n scar{a}|int;legs_count|Selec{t}ii|int;selections|Biletul|txt;reason|Motiv|txt"
     LayoutSimDays = s
+End Function
+
+Private Function LayoutSimEquity() As String
+    LayoutSimEquity = "date|Data|txt;net|C{a^}{s}tig net cumulat|num;bankroll|Banca sc{a}rii|num;ladder_index|Scara|int"
 End Function
 
 Private Function LayoutSimDatasets() As String
@@ -1410,7 +1499,7 @@ Private Function HttpCall(ByVal method As String, ByVal url As String, ByRef htt
     m_total = -1
     Set http = NewHttp()
     On Error Resume Next
-    http.setTimeouts CONNECT_TIMEOUT_MS, CONNECT_TIMEOUT_MS, 30000, RECEIVE_TIMEOUT_MS
+    http.setTimeouts CONNECT_TIMEOUT_MS, CONNECT_TIMEOUT_MS, 30000, ReceiveTimeout(url)
     If IsLocalUrl(url) Then http.setProxy 1
     Err.Clear
     http.Open method, url, False
@@ -1449,8 +1538,21 @@ End Function
 ' Apelat doar dupa On Error GoTo 0 (altfel On Error Resume Next din HttpCall ar inghiti eroarea).
 Private Sub RaiseHttpFailure(ByVal failNumber As Long, ByVal failure As String)
     If failNumber = 18 Then Err.Raise 18
+    ' Un timeout nu inseamna server oprit: serverul raspunde, dar inca lucreaza.
+    If failNumber = HTTP_TIMEOUT_ERROR Then
+        Err.Raise ERR_API, APP_TITLE, Ro("Serverul {i^}nc{a} lucreaz{a} (prima rulare poate dura c{a^}teva minute); ap{a}s{a} din nou peste un minut.")
+    End If
     Err.Raise ERR_SERVER, APP_TITLE, ServerDownMessage(failure)
 End Sub
+
+' Simularea si recomandarile (calcule lungi la prima rulare) asteapta mai mult.
+Private Function ReceiveTimeout(ByVal url As String) As Long
+    If InStr(1, url, "/api/excel/simulate", vbTextCompare) > 0 Or InStr(1, url, "/api/excel/recommendations", vbTextCompare) > 0 Then
+        ReceiveTimeout = LONG_RECEIVE_TIMEOUT_MS
+    Else
+        ReceiveTimeout = RECEIVE_TIMEOUT_MS
+    End If
+End Function
 
 Private Function NewHttp() As Object
     Dim http As Object
@@ -2013,7 +2115,7 @@ End Sub
 
 ' Graficul bancii din jurnalul simularii (optional: fara grafic, jurnalul ramane).
 Private Sub AddEquityChart(ByVal ws As Worksheet, ByVal firstRow As Long, ByVal n As Long, ByVal valueCol As Long, _
-                           ByVal dateCol As Long, ByVal posX As Double, ByVal posY As Double)
+                           ByVal dateCol As Long, ByVal posX As Double, ByVal posY As Double, ByVal title As String)
     Dim chartShape As Object
     On Error Resume Next
     Set chartShape = ws.Shapes.AddChart(xlLine, posX, posY, 520, 260)
@@ -2021,10 +2123,10 @@ Private Sub AddEquityChart(ByVal ws As Worksheet, ByVal firstRow As Long, ByVal 
     With chartShape.Chart
         .SetSourceData ws.Range(ws.Cells(firstRow, valueCol), ws.Cells(firstRow + n - 1, valueCol))
         .SeriesCollection(1).XValues = ws.Range(ws.Cells(firstRow, dateCol), ws.Cells(firstRow + n - 1, dateCol))
-        .SeriesCollection(1).Name = Ro("Banca dup{a} fiecare zi")
+        .SeriesCollection(1).Name = title
         .HasLegend = False
         .HasTitle = True
-        .ChartTitle.Text = Ro("Evolu{t}ia b{a}ncii")
+        .ChartTitle.Text = title
     End With
 End Sub
 
@@ -2308,7 +2410,7 @@ Private Sub BuildSimSheet()
     ws.Range(SIM_START & ":" & SIM_END).NumberFormat = "@"
     PanelRow ws, 3, "Suma (lei)", 5, Ro("Banca de pornire; la scar{a} este miza primei zile.")
     PanelRow ws, 4, "Set de date", "recent", Ro("recent = ultimele zile; football, football-plus, tennis = arhive; local-* = meciurile salvate.")
-    PanelRow ws, 5, "Sporturi (recent)", "Toate", Ro("Doar pentru setul recent: Toate sau un singur sport.")
+    PanelRow ws, 5, "Sporturi (recent)", "Fotbal", Ro("Doar pentru setul recent: Toate sau un singur sport (Toate = de 3 ori mai multe cereri).")
     PanelRow ws, 6, "Zile recente", 14, Ro("1 - 60. Zilele lips{a} se descarc{a} automat (o cerere FlashScore pe zi {s}i sport).")
     PanelRow ws, 7, Ro("Cot{a} {t}int{a}"), 2, Ro("Cota biletului zilnic (scar{a} {s}i bilet), 1.2 - 100.")
     PanelRow ws, 8, "Strategie", "scara", Ro("scara = tot c{a^}{s}tigul se joac{a} a doua zi; bilet = un bilet pe zi; simple = selec{t}ii simple (miz{a} 10% din sum{a}).")
@@ -2316,6 +2418,7 @@ Private Sub BuildSimSheet()
     PanelRow ws, 10, Ro("Reia dup{a} pierdere"), "DA", Ro("DA = a doua zi porne{s}te o scar{a} nou{a} cu suma ini{t}ial{a} (banii investi{t}i se adun{a}).")
     PanelRow ws, 11, Ro("De la (op{t}ional)"), Empty, Ro("AAAA-LL-ZZ; gol = ultimul an al setului. Nu se folose{s}te la recent.")
     PanelRow ws, 12, Ro("P{a^}n{a} la (op{t}ional)"), Empty, Ro("AAAA-LL-ZZ; gol = ultima zi a setului.")
+    PanelRow ws, 13, Ro("{I^}ncaseaz{a} dup{a} N zile (scara)"), Empty, Ro("Op{t}ional: dup{a} N bilete reu{s}ite scara se {i^}ncaseaz{a} {s}i porne{s}te alta cu suma ini{t}ial{a}.")
     ws.Range(SIM_AMOUNT).NumberFormat = "0.00"
     ws.Range(SIM_ODDS).NumberFormat = "0.00"
     ws.Range(SIM_REINVEST).NumberFormat = "0.00"
@@ -2324,9 +2427,10 @@ Private Sub BuildSimSheet()
     SetListValidation ws.Range(SIM_STRATEGY), "=" & SH_LISTS & "!$I$1:$I$3", True
     SetListValidation ws.Range(SIM_RESTART), "=" & SH_LISTS & "!$E$1:$E$2", True
     DeleteButtons ws
-    AddButton ws, "RuleazaSimularea", Ro("Ruleaz{a} simularea"), ws.Range("A13").Left, ws.Range("A13").Top + 2, 180
-    AddButton ws, "IncarcaSeturiDate", "Seturi de date", ws.Range("A13").Left + 190, ws.Range("A13").Top + 2, 140
-    ws.Rows(13).RowHeight = 30
+    ws.Range(SIM_MAXDAYS).NumberFormat = "0"
+    AddButton ws, "RuleazaSimularea", Ro("Ruleaz{a} simularea"), ws.Range("A14").Left, ws.Range("A14").Top + 2, 180
+    AddButton ws, "IncarcaSeturiDate", "Seturi de date", ws.Range("A14").Left + 190, ws.Range("A14").Top + 2, 140
+    ws.Rows(14).RowHeight = 30
 End Sub
 
 Private Sub BuildWalletSheet()
@@ -2605,6 +2709,11 @@ Private Function PanelCompetition() As String
     label = Trim$(SafeText(PanelValue(CELL_COMP)))
     If Len(label) = 0 Or label = Ro("(toate)") Then Exit Function
     Set ws = ThisWorkbook.Worksheets(SH_LISTS)
+    ' Lista din Liste!A:B este a altui sport (B3 s-a schimbat): filtrul vechi nu se trimite.
+    If SafeText(ws.Range(LIST_COMP_SPORT).Value) <> PanelSport() Then
+        ResetCompetition
+        Exit Function
+    End If
     lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
     For r = 2 To lastRow
         If SafeText(ws.Cells(r, 1).Value) = label Then
@@ -2612,8 +2721,20 @@ Private Function PanelCompetition() As String
             Exit Function
         End If
     Next r
-    PanelCompetition = label
+    ' Un ID scris de mana (ex. england|premier league) se trimite ca atare; o eticheta
+    ' necunoscuta ar goli tabelul, deci filtrul revine la (toate).
+    If InStr(label, "|") > 0 Or InStr(label, ":") > 0 Then
+        PanelCompetition = label
+    Else
+        ResetCompetition
+    End If
 End Function
+
+Private Sub ResetCompetition()
+    On Error Resume Next
+    ThisWorkbook.Worksheets(SH_PANEL).Range(CELL_COMP).Value = Ro("(toate)")
+    SetStatus Ro("Competi{t}ia din Panou B6 nu este {i^}n lista sportului ales; filtrul a revenit la (toate).")
+End Sub
 
 '==============================================================================
 ' Utilitare
@@ -2667,7 +2788,15 @@ Private Function Plain(ByVal text As String) As String
     Plain = text
 End Function
 
+' True (cu un mesaj in Panou) cand alt macro ruleaza inca: al doilea clic nu porneste nimic.
+Private Function IsBusy() As Boolean
+    If Not m_busy Then Exit Function
+    IsBusy = True
+    Application.StatusBar = APP_TITLE & ": " & Ro("o alt{a} opera{t}ie ruleaz{a} {i^}nc{a}; a{s}teapt{a} s{a} se termine.")
+End Function
+
 Private Sub BeginWork(ByVal message As String)
+    m_busy = True
     Application.ScreenUpdating = False
     Application.Cursor = xlWait
     Application.EnableCancelKey = xlErrorHandler
@@ -2676,6 +2805,7 @@ Private Sub BeginWork(ByVal message As String)
 End Sub
 
 Private Sub EndWork(Optional ByVal message As String = "")
+    m_busy = False
     Application.ScreenUpdating = True
     Application.Cursor = xlDefault
     Application.StatusBar = False

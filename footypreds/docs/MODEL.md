@@ -110,8 +110,18 @@ modelului pentru peste/sub 2,5 (fără calibrare), rezultatele au fost:
 | 1,20–1,30 | 144 | −20,1% |
 | ≥ 1,30 | 33 | −25,8% |
 
-Plafonul cu ROI maxim pe validare este 1,05 (−4,6%, față de −6,1% fără plafon). Regula se
-aplică tuturor sporturilor, fiindcă nici baschetul, nici tenisul nu au un avantaj măsurat.
+Plafonul cu ROI maxim pe validare este 1,05 (−4,6%, față de −6,1% fără plafon). Este o
+**euristică prudentă, nu un optim potrivit**: 1,05 este cel mai bun din 7 plafoane încercate
+pe aceleași ~3450 selecții (cote în jur de 1,9), iar diferențele dintre plafoane sunt de
+ordinul unei erori standard a ROI (≈ 1,6 puncte procentuale; banda 1,15–1,20 a dat chiar
++5,7%). Populația pe care a fost măsurat (peste/sub 2,5 necalibrat) nu mai există: acum o
+cotă peste/sub 2,5 fixează probabilitatea la prețul pieței. Regula se aplică totuși tuturor
+piețelor și sporturilor, **fără o măsurare proprie** pentru 1X2, handicapuri, alte totaluri,
+baschet sau tenis, fiindcă niciunul nu are un avantaj măsurat față de piață.
+
+Simulatorul folosește exact aceeași regulă (`recommend.leg_allowed`, apelată și de
+`simulator.model_legs`), cu excepția strategiei „value”, care testează intenționat
+dezacordurile modelului cu prețul și nu are plafon.
 În simulator, plafonul nu schimbă nimic pe seturile football-data: acolo, după calibrare,
 probabilitățile selecțiilor cu cotă sunt practic cele ale pieței.
 
@@ -153,7 +163,10 @@ este mai optimist decât piața. Acestea sunt, din nou, supraestimate: afișau �
 ieșit 44–55%.
 
 Pe sezonul de validare 2024–25, cu aceleași reguli, selecțiile sunt acum calibrate
-(prezis / reușit):
+(prezis / reușit). **Atenție: aceste cifre sunt în eșantion** — calibrarea golurilor și
+plafonul de valoare au fost potrivite exact pe acest sezon (16 ligi), deci sunt optimiste.
+Cifrele din afara eșantionului sunt cele din 2025–26 de mai sus; tot în eșantion sunt și
+rulările scării pe football-plus 2024-08-01 – 2025-06-30.
 
 | Set / strategie | 8.0: prezis / reușit, ROI | 8.1: prezis / reușit, ROI |
 |---|---|---|
@@ -197,3 +210,10 @@ sunt foarte greu de bătut; modelul adaugă informație mai ales acolo unde nu e
   sezonul de test rămâne 0,01–0,02.
 - Probabilitatea unei selecții nu este un avantaj: fără o diferență măsurată față de piață,
   orice strategie pierde în medie cel puțin marja casei.
+- Problema totalurilor a fost observată întâi pe sezonul 2025–26 (sezonul de test), apoi
+  corectată numai cu parametri potriviți pe 2024–25. Câștigul de pe test confirmă o
+  corecție motivată de test, nu este o descoperire oarbă.
+- Seturile football-data folosesc cotele medii (coloanele Avg, marjă mai mare), nu cele mai
+  bune cote pe care le compară aplicația: în simulator selecțiile peste/sub 2,5 (egale cu
+  piața) cad sub pragul de valoare, deci simulatorul nu testează selecțiile de goluri pe care
+  aplicația le poate recomanda.

@@ -38,6 +38,7 @@ import socket
 import struct
 import sys
 import tempfile
+import time as time_module
 import zlib
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
@@ -460,6 +461,10 @@ class FakeFlashScore:
                 rows.append(row)
             groups.append({k: v for k, v in group.items() if k != "matches"} | {"matches": rows})
         self.retime(groups, day, sport)
+        if day == self.now.date():
+            # Today's list also carries the games in play, like the real list-by-date: the
+            # board's "Live" filter and /api/live then show the same games.
+            groups.extend(self.live(sport))
         for group in groups:
             for row in group["matches"]:
                 self.rows[row["match_id"]] = (sport, row)
@@ -570,7 +575,10 @@ class FakeFlashScore:
         if path.endswith("matches/standings"):
             return httpx.Response(200, json=[])
         if path.endswith("match/stats"):
-            return httpx.Response(200, json=load("stats_live_football.json"))
+            # Only football stats were captured; other sports answer "no stats".
+            found = self.rows.get(match_id)
+            stats = load("stats_live_football.json") if not found or found[0] == "football" else []
+            return httpx.Response(200, json=stats)
         return httpx.Response(200, json=[])
 
     def live(self, sport):
@@ -579,6 +587,7 @@ class FakeFlashScore:
         for group in groups:
             for row in group.get("matches", []):
                 row["timestamp"] = started
+                self.rows[row["match_id"]] = (sport, row)
         return groups
 
     def h2h(self, match_id):
@@ -779,6 +788,30 @@ async def serve(server, url):
     return 0
 
 
+STALE_AFTER = 6 * 3600
+
+
+def remove_stale_workdirs(root=None, now=None):
+    """Delete footypreds-mock-* folders left by a force-killed server (older than 6 h).
+
+    A running server keeps its SQLite file open, so on Windows its folder cannot be removed;
+    errors are ignored. Returns the removed paths.
+    """
+    root = Path(root or tempfile.gettempdir())
+    now = now if now is not None else time_module.time()
+    removed = []
+    for folder in root.glob("footypreds-mock-*"):
+        try:
+            if not folder.is_dir() or now - folder.stat().st_mtime < STALE_AFTER:
+                continue
+        except OSError:
+            continue
+        shutil.rmtree(folder, ignore_errors=True)
+        if not folder.exists():
+            removed.append(folder)
+    return removed
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="FootyPreds offline, cu date FlashScore fictive.")
     parser.add_argument("--port", type=int, default=8765)
@@ -789,8 +822,10 @@ def main(argv=None):
 
     import uvicorn
 
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(errors="replace")  # a cp1252 console must not crash the banner
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            # UTF-8 even when redirected to a file on a cp1252 console ("fără rețea", not "f?r?").
+            stream.reconfigure(encoding="utf-8", errors="replace")
     if not port_free(args.host, args.port):
         print(
             f"Portul {args.port} este ocupat (poate rulează deja un server). "
@@ -798,6 +833,7 @@ def main(argv=None):
             file=sys.stderr,
         )
         return 1
+    remove_stale_workdirs()
     workdir = Path(tempfile.mkdtemp(prefix="footypreds-mock-"))
     code = 0
     try:

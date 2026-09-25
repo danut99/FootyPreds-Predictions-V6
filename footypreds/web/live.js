@@ -12,14 +12,44 @@ const PERIODS = {
   S1: 'Setul 1', S2: 'Setul 2', S3: 'Setul 3', S4: 'Setul 4', S5: 'Setul 5',
 };
 
+// Provider statistic names (English) -> Romanian; unknown names are shown as they come.
+const STAT_NAMES = {
+  'Expected goals (xG)': 'Goluri așteptate (xG)', 'Expected assists (xA)': 'Pase de gol așteptate (xA)',
+  'xG on target (xGOT)': 'xG pe poartă (xGOT)', 'xGOT faced': 'xGOT primit', 'Ball possession': 'Posesie',
+  'Total shots': 'Șuturi', 'Shots on target': 'Șuturi pe poartă', 'Shots off target': 'Șuturi pe lângă',
+  'Blocked shots': 'Șuturi blocate', 'Shots inside the box': 'Șuturi din careu', 'Shots outside the box': 'Șuturi din afara careului',
+  'Big chances': 'Ocazii mari', 'Corner kicks': 'Cornere', 'Offsides': 'Ofsaiduri', 'Fouls': 'Faulturi',
+  'Free kicks': 'Lovituri libere', 'Throw ins': 'Aruncări de la margine', 'Goal kicks': 'Lovituri de poartă',
+  'Goalkeeper saves': 'Parade', 'Goals prevented': 'Goluri evitate', 'Hit the woodwork': 'Bare',
+  'Passes': 'Pase', 'Long passes': 'Pase lungi', 'Accurate through passes': 'Pase în adâncime reușite',
+  'Passes in final third': 'Pase în ultima treime', 'Touches in opposition box': 'Atingeri în careul advers',
+  'Tackles': 'Deposedări', 'Interceptions': 'Interceptări', 'Clearances': 'Degajări', 'Duels won': 'Dueluri câștigate',
+  'Errors leading to goal': 'Greșeli urmate de gol', 'Errors leading to shot': 'Greșeli urmate de șut',
+  'Yellow cards': 'Cartonașe galbene', 'Red cards': 'Cartonașe roșii', 'Aces': 'Ași', 'Double faults': 'Duble greșeli',
+  'Break points saved': 'Mingi de break salvate', 'Rebounds': 'Recuperări', 'Assists': 'Pase decisive',
+  'Turnovers': 'Mingi pierdute', 'Steals': 'Mingi furate', 'Blocks': 'Capace', 'Field goals': 'Aruncări din acțiune',
+  'Free throws': 'Aruncări libere', '3-point field goals': 'Aruncări de 3 puncte',
+};
+
+// Statistic periods per sport: "match", "1st-half", "2nd-quarter", "3rd-set"...
+function statPeriodLabel(period, sport) {
+  if (period === 'match') return 'Meci';
+  const m = String(period).match(/^(\d+)(?:st|nd|rd|th)-(half|quarter|set|period)$/);
+  if (!m) return period;
+  const part = m[2] === 'half' ? 'Repriza' : m[2] === 'quarter' ? 'Sfertul' : m[2] === 'set' ? 'Setul' : sport === 'basketball' ? 'Sfertul' : 'Perioada';
+  return `${part} ${m[1]}`;
+}
+
 function periodLabel(item) {
   const period = item.period || item.match?.live?.period || '';
   if ((item.sport || item.match?.sport) === 'football' && isNum(item.minute) && !['HT', 'PEN', 'BREAK'].includes(period)) return `${item.clock || item.minute}'`;
   return PERIODS[period] || item.stage || item.clock || 'Live';
 }
 
-function renderLive() {
+function renderLive(params) {
   const scope = currentScope;
+  const wanted = params?.get('meci');
+  const wantedSport = params?.get('sport');
   const app = $('#app');
   const sports = chosenSports();
   liveState.items = {};
@@ -69,6 +99,8 @@ function renderLive() {
   });
   $('#live-now').addEventListener('click', refresh);
   refresh();
+  // #/live?meci=ID&sport=S (a card of the home page's live strip): open that match's drawer.
+  if (wanted && SPORT_KEYS.includes(wantedSport)) openLiveDetail(wanted, wantedSport);
 }
 
 async function loadLiveSport(scope, sport) {
@@ -85,7 +117,7 @@ async function loadLiveSport(scope, sport) {
   }
   if (!scope.alive) return;
   liveState.items[sport] = data.matches || [];
-  $(`#lc-${sport}`).textContent = `${data.count ?? liveState.items[sport].length} meciuri · actualizat ${fmtTime(data.updated_at || Date.now())}`;
+  $(`#lc-${sport}`).textContent = `${plural(data.count ?? liveState.items[sport].length, 'meci', 'meciuri')} · actualizat ${fmtTime(data.updated_at || Date.now())}`;
   if (data.odds_note) $('#live-note').innerHTML = `<div class="callout callout-info" role="note"><div class="callout-icon">${icon('live')}</div><div>${esc(data.odds_note)}</div></div>`;
   if (!liveState.items[sport].length) {
     grid.innerHTML = emptyState(`Niciun meci de ${SPORT_LABEL[sport].toLowerCase()} live acum.`, 'Pagina se actualizează automat.');
@@ -145,7 +177,6 @@ async function openLiveDetail(id, sport) {
   const m = data.match;
   const stats = data.stats || {};
   const periods = Object.keys(stats);
-  const statNames = {match: 'Meci', '1st-half': 'Repriza 1', '2nd-half': 'Repriza 2'};
   content.innerHTML = `
     <p class="eyebrow">${sportTag(sport)} ${esc(data.competition || leagueName(m.league))}</p>
     <div class="drawer-score">
@@ -160,7 +191,7 @@ async function openLiveDetail(id, sport) {
     <div class="table-wrap"><table class="table compact"><thead><tr><th>Piață</th><th class="num">Probabilitate</th><th class="num">Cotă corectă</th></tr></thead>
       <tbody>${(data.markets || []).map(x => `<tr${x.reliable === false ? ' class="muted-row"' : ''}><td>${esc(x.label)}${x.reliable === false ? ' <small class="muted">(estimare nesigură)</small>' : ''}</td><td class="num">${pct(x.probability, 1)}</td><td class="num">${num(x.fair_odds)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Nicio piață deschisă.</td></tr>'}</tbody></table></div>
     ${periods.length ? `<h3 class="mini-title">Statistici</h3>
-      <div class="chip-row" role="group" aria-label="Perioadă">${chips(periods.map(p => [p, esc(statNames[p] || p)]), periods[0], 'stat-period')}</div>
+      <div class="chip-row" role="group" aria-label="Perioadă">${chips(periods.map(p => [p, esc(statPeriodLabel(p, sport))]), periods[0], 'stat-period')}</div>
       <div id="stats-box"></div>` : '<p class="small muted">Statisticile nu sunt disponibile pentru acest meci.</p>'}
     ${data.pre_match ? `<p class="small muted">Înainte de meci: sursa ${esc({analysis: 'analiza modelului', odds: 'cotele fără marjă', default: 'valori implicite'}[data.pre_match.source] || data.pre_match.source)}${data.pre_match.grade ? `, nota ${esc(data.pre_match.grade)}` : ''}.</p>` : ''}
     ${data.notes?.length ? `<ul class="notes-list">${data.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
@@ -171,7 +202,7 @@ async function openLiveDetail(id, sport) {
     box.innerHTML = `<div class="stat-rows">${(stats[period] || []).map(s => {
       const h = Number(s.home_value) || 0, a = Number(s.away_value) || 0;
       const share = h + a > 0 ? h / (h + a) : 0.5;
-      return `<div class="stat-row"><b>${esc(s.home)}</b><span class="stat-name">${esc(s.name)}</span><b>${esc(s.away)}</b><span class="stat-bar"><span class="sb-home" data-w="${share}"></span></span></div>`;
+      return `<div class="stat-row"><b>${esc(s.home)}</b><span class="stat-name">${esc(STAT_NAMES[s.name] || s.name)}</span><b>${esc(s.away)}</b><span class="stat-bar"><span class="sb-home" data-w="${share}"></span></span></div>`;
     }).join('')}</div>`;
     hydrate(box);
   };

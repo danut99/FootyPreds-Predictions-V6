@@ -45,7 +45,7 @@ function drawWallet(scope, w) {
   body.innerHTML = `
     <div class="kpi-grid kpi-4 wallet-kpis">
       ${kpi('Sold disponibil', money(w.balance, currency), `depus ${money(w.deposited, currency)}`)}
-      ${kpi('În joc', money(w.staked_open, currency), `${esc(w.open ?? open.length)} pariuri deschise`)}
+      ${kpi('În joc', money(w.staked_open, currency), `${esc(plural(w.open ?? open.length, 'pariu deschis', 'pariuri deschise'))}`)}
       ${kpi('Profit', signedMoney(w.profit, currency), 'pe pariurile decontate', toneOf(w.profit))}
       ${kpi('Bilanț', `${esc(w.won ?? 0)} / ${esc(w.lost ?? 0)} / ${esc(w.void ?? 0)}`, 'câștigate / pierdute / anulate')}
     </div>

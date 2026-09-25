@@ -31,6 +31,7 @@ function renderBoard() {
         <p class="eyebrow">Meciuri · ${esc(sports.map(s => SPORT_LABEL[s]).join(', '))}</p>
         <h1>Programul zilei: ${esc(fmtLongDay(boardState.day))}</h1>
         <p class="lead">Probabilități pentru fiecare meci, pontul cel mai probabil și calitatea datelor (A–D). Apasă pe un meci pentru analiza completă.</p>
+        ${utcDayNote() ? `<p class="muted small">${esc(utcDayNote())}</p>` : ''}
       </div>
     </section>
     <div class="toolbar card" role="search">
@@ -64,8 +65,10 @@ function renderBoard() {
     clearTimeout(timer);
     timer = setTimeout(() => { boardState.search = e.target.value; sports.forEach(drawBoardSport); }, 150);
   });
-  $('#board-grade').addEventListener('change', e => { boardState.grade = e.target.value; persist('board.grade', e.target.value); sports.forEach(drawBoardSport); });
-  $('#board-status').addEventListener('change', e => { boardState.status = e.target.value; persist('board.status', e.target.value); sports.forEach(drawBoardSport); });
+  // Grade and status filters work on the whole day: missing pages are loaded first.
+  const refilter = () => sports.forEach(sport => (filtering() ? loadAllPages(scope, sport) : drawBoardSport(sport)));
+  $('#board-grade').addEventListener('change', e => { boardState.grade = e.target.value; persist('board.grade', e.target.value); refilter(); });
+  $('#board-status').addEventListener('change', e => { boardState.status = e.target.value; persist('board.status', e.target.value); refilter(); });
   $('#board-competition')?.addEventListener('change', e => {
     boardState.competition = e.target.value;
     state.boardRequest += 1;
@@ -109,6 +112,7 @@ async function loadBoardSport(scope, sport, reset) {
     current.competitions = data.competitions || [];
     fillCompetitionSelect(current.competitions);
     drawBoardSport(sport);
+    if (filtering() && current.items.length < current.total && data.items.length) loadBoardSport(scope, sport, false);
   } catch (error) {
     if (!scope.alive || generation !== state.boardRequest || current.request !== request) return;
     $('.board-body', section).innerHTML = errorState(error, `retry-${sport}`);
@@ -116,6 +120,14 @@ async function loadBoardSport(scope, sport, reset) {
   } finally {
     if (more) more.disabled = false;
   }
+}
+
+const filtering = () => boardState.grade !== 'all' || boardState.status !== 'all';
+
+function loadAllPages(scope, sport) {
+  const current = boardState.data[sport];
+  if (current && current.items.length < current.total) loadBoardSport(scope, sport, false);
+  else drawBoardSport(sport);
 }
 
 function fillCompetitionSelect(list) {
@@ -147,28 +159,21 @@ function drawBoardSport(sport) {
   const body = $('.board-body', section);
   const items = boardVisible(current.items);
   const count = $(`#bc-${sport}`);
-  if (count) count.textContent = `${current.total} meciuri`;
+  if (count) count.textContent = plural(current.total, 'meci', 'meciuri');
   const more = $(`[data-more="${sport}"]`);
   if (more) {
     more.hidden = current.items.length >= current.total;
     more.textContent = `Încarcă mai multe (${current.items.length}/${current.total})`;
   }
+  const loading = filtering() && current.items.length < current.total;
   if (!items.length) {
-    body.innerHTML = emptyState(current.items.length ? 'Niciun meci pentru aceste filtre.' : `Nu există meciuri de ${SPORT_LABEL[sport].toLowerCase()} în această zi.`, 'Schimbă data, competiția sau filtrele.');
+    body.innerHTML = loading ? `<div class="match-grid">${skeletonCards(3)}</div>`
+      : emptyState(current.items.length ? 'Niciun meci pentru aceste filtre.' : `Nu există meciuri de ${SPORT_LABEL[sport].toLowerCase()} în această zi.`, 'Schimbă data, competiția sau filtrele.');
     return;
   }
-  const groups = new Map();
-  items.forEach(item => {
-    if (!groups.has(item.competition_id)) groups.set(item.competition_id, {item, items: []});
-    groups.get(item.competition_id).items.push(item);
-  });
-  body.innerHTML = [...groups.values()].map(group => {
-    const m = group.item.match;
-    return `<div class="comp-group">
-      <h3 class="comp-head">${crest(m.league_logo, group.item.competition, 'xs', 'league')}<span>${esc(m.country ? `${m.country} · ` : '')}${esc(group.item.competition)}</span><small>${group.items.length}</small></h3>
-      <div class="match-grid">${group.items.map(matchCard).join('')}</div>
-    </div>`;
-  }).join('');
+  // One grid per sport (competitions in the API's priority order); each card names its
+  // competition, so days with many one-game competitions do not become a tall list of rows.
+  body.innerHTML = `<div class="match-grid">${items.map(matchCard).join('')}</div>`;
   hydrate(body);
 }
 
@@ -215,6 +220,7 @@ function matchCard(item) {
   const xg = sport === 'football' && boardState.tab === 'goals' && item.expected_goals
     ? `<span class="mc-extra">xG ${num((item.expected_goals.home || 0) + (item.expected_goals.away || 0), 1)}</span>` : '';
   return `<a class="card match-card sport-${esc(sport)} status-${esc(m.status)}" href="${matchHref(m.id, sport)}">
+    <div class="mc-comp">${crest(m.league_logo, item.competition, 'xs', 'league')}<span title="${esc(m.country ? `${m.country} · ${item.competition}` : item.competition)}">${esc(m.country ? `${m.country} · ` : '')}${esc(item.competition)}</span></div>
     <div class="mc-top">${matchStatus(m, item)}${gradeBadge(item.grade, item.confidence)}</div>
     <div class="mc-teams">
       <div class="mc-team">${crest(m.home_logo, m.home, 'md')}<span class="team-name">${esc(m.home)}</span>${formPills(form.home)}${finished ? `<b class="mc-score">${esc(m.home_goals ?? '')}</b>` : ''}</div>

@@ -33,6 +33,12 @@ _LOCK = threading.Lock()
 router = APIRouter(prefix="/api/wallet", tags=["wallet"])
 
 
+def ro_amount(value):
+    """1234.5 -> "1.234,50" (the UI's ro-RO money format, also in server messages)."""
+    text = f"{abs(value):,.2f}".replace(",", " ").replace(".", ",").replace(" ", ".")
+    return f"-{text}" if value < 0 else text
+
+
 def utcnow():
     """Current time; tests replace it to freeze the clock."""
     return datetime.now(timezone.utc)
@@ -95,8 +101,8 @@ def place_bet(store, stake, legs, label, source="custom", now=None):
         balance = _balance(db)
         if stake > balance + 1e-9:
             raise ValueError(
-                f"Sold insuficient în portofelul virtual: ai {balance:.2f} {CURRENCY}, "
-                f"miza este {stake:.2f} {CURRENCY}."
+                f"Sold insuficient în portofelul virtual: ai {ro_amount(balance)} {CURRENCY}, "
+                f"miza este {ro_amount(stake)} {CURRENCY}."
             )
         db.execute(
             "INSERT INTO wallet_bets VALUES (?, ?, ?, ?, ?, ?, 'pending', NULL, NULL, ?)",

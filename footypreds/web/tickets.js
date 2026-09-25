@@ -84,6 +84,8 @@ async function generateTicket(scope) {
   const button = $('#gen-go');
   button.disabled = true;
   out.innerHTML = `<div class="ticket-grid single-col">${skeletonCards(1, 'tall')}</div>`;
+  // On a phone the form fills the screen: bring the result (first the skeleton) into view.
+  out.scrollIntoView({behavior: 'smooth', block: 'start'});
   const body = {day: isoDay(ticketState.offset), target_odds: Number(ticketState.target), sports: ticketState.sports};
   if (ticketState.exclude.length) body.exclude_match_ids = ticketState.exclude.slice(-300);
   let data;
@@ -102,20 +104,29 @@ async function generateTicket(scope) {
   const tickets = [data.ticket, ...(data.alternatives || [])];
   const playable = t => t.status === 'pending' && t.legs?.length;
   const actions = (t, i) => playable(t) ? `<button class="btn btn-primary" type="button" data-play="${i}">${icon('wallet')}Joacă virtual</button>` : '';
+  // Unavailable after "Altă variantă": the excluded matches used up the pool, so offer a reset.
+  const exhausted = !playable(data.ticket) && ticketState.exclude.length > 0;
+  const more = playable(data.ticket)
+    ? `<button class="btn btn-secondary" type="button" id="gen-other">${icon('refresh')}Altă variantă</button>`
+    : exhausted ? `<button class="btn btn-secondary" type="button" id="gen-reset">${icon('refresh')}Resetează excluderile</button>` : '';
   out.innerHTML = `
     ${warningsBox(data.warnings, 'Avertismente')}
-    <p class="muted small">${esc(data.candidates ?? 0)} selecții eligibile · analizate: ${esc(Object.entries(data.analyzed || {}).map(([s, n]) => `${SPORT_LABEL[s] || s} ${n}`).join(', ') || '—')}${ticketState.exclude.length ? ` · ${ticketState.exclude.length} meciuri excluse` : ''}</p>
+    <p class="muted small">${esc(plural(data.candidates ?? 0, 'selecție eligibilă', 'selecții eligibile'))} · analizate: ${esc(Object.entries(data.analyzed || {}).map(([s, n]) => `${SPORT_LABEL[s] || s} ${n}`).join(', ') || '—')}${ticketState.exclude.length ? ` · ${esc(plural(ticketState.exclude.length, 'meci exclus', 'meciuri excluse'))}` : ''}</p>
     <div class="ticket-grid single-col">${ticketCard(data.ticket, {
       id: 'generated-ticket',
-      actions: `${actions(data.ticket, 0)}<button class="btn btn-secondary" type="button" id="gen-other">${icon('refresh')}Altă variantă</button>`,
+      actions: `${actions(data.ticket, 0)}${more}`,
     })}</div>
     ${tickets.length > 1 ? `<div class="section-head"><div><h2>Variante pe alte meciuri</h2><p class="muted small">Aceeași cotă, meciuri complet diferite.</p></div></div>
       <div class="ticket-grid">${tickets.slice(1).map((t, i) => ticketCard(t, {title: `Varianta ${i + 2}`, actions: actions(t, i + 1)})).join('')}</div>` : ''}`;
   $('#gen-disclaimer').innerHTML = disclaimerBox(data.disclaimer);
   hydrate(out);
-  $('#gen-other').addEventListener('click', () => {
+  $('#gen-other')?.addEventListener('click', () => {
     const used = tickets.flatMap(t => (t.legs || []).map(l => l.match_id));
     ticketState.exclude = [...new Set([...ticketState.exclude, ...used])];
+    generateTicket(scope);
+  });
+  $('#gen-reset')?.addEventListener('click', () => {
+    ticketState.exclude = [];
     generateTicket(scope);
   });
   $$('[data-play]', out).forEach(b => b.addEventListener('click', () => playTicket(tickets[Number(b.dataset.play)])));
@@ -124,15 +135,16 @@ async function generateTicket(scope) {
 async function playTicket(ticket) {
   const stake = await stakeDialog({
     title: 'Joacă biletul în portofelul virtual',
-    text: `${ticket.legs.length} selecții, cotă totală ${num(ticket.total_odds)}, șansă estimată ${pct(ticket.probability)}. Cotele se blochează acum.`,
+    text: `${plural(ticket.legs.length, 'selecție', 'selecții')}, cotă totală ${num(ticket.total_odds)}, șansă estimată ${pct(ticket.probability)}. Cotele se blochează acum.`,
   });
   if (stake == null) return;
   try {
-    const wallet = await post('/api/wallet/bet', {
+    const wallet = await placeBet({
       stake,
       legs: ticket.legs.map(l => ({match_id: l.match_id, key: l.key})),
       label: `Bilet generat cota ${num(ticket.target ?? ticket.target_odds, 1)}`,
     });
+    if (!wallet) return;
     toast(`Bilet jucat virtual. Sold: ${money(wallet.balance, wallet.currency)}.`, 'success', {href: '#/portofel', label: 'Vezi portofelul'});
   } catch (error) {
     toast(error.message, 'error');

@@ -443,7 +443,9 @@ def report_markdown(report):
             "recomandărilor) a fost potrivită numai pe predicțiile sezonului de validare "
             f"{', '.join(calibration_protocol['seasons'])} din "
             f"{len(calibration_protocol['leagues'])} ligi (`python -m footypreds.evaluation.tune "
-            "--totals`).",
+            "--totals`). Problema totalurilor (8.0 prea încrezător la peste/sub 2.5) a fost "
+            "observată întâi pe sezonul de test 2025-26: rezultatul de mai jos confirmă o "
+            "corecție motivată de test, cu parametri potriviți numai pe validare.",
             "",
             "## 1X2 — toate meciurile",
             "",

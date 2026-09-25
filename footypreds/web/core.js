@@ -37,16 +37,40 @@ function persist(key, value) {
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const isNum = value => typeof value === 'number' && Number.isFinite(value);
-const pct = (value, digits = 0) => isNum(value) ? `${(value * 100).toFixed(digits)}%` : '—';
+// One convention everywhere: amounts and percentages in ro-RO (decimal comma, "12,5%",
+// "1.234,50 RON"); odds and other decimals keep the dot, as bookmakers print them ("1.85").
+const roFixed = (value, digits) => Number(value).toLocaleString('ro-RO', {minimumFractionDigits: digits, maximumFractionDigits: digits});
+const pct = (value, digits = 0) => isNum(value) ? `${roFixed(value * 100, digits)}%` : '—';
 const num = (value, digits = 2) => isNum(value) ? Number(value).toFixed(digits) : '—';
 const signedPct = (value, digits = 0) => {
   if (!isNum(value)) return '—';
-  const text = (value * 100).toFixed(digits);
-  return Number(text) === 0 ? `${(0).toFixed(digits)}%` : `${value > 0 ? '+' : ''}${text}%`;
+  const rounded = Number((value * 100).toFixed(digits));
+  return rounded === 0 ? `${roFixed(0, digits)}%` : `${value > 0 ? '+' : ''}${roFixed(value * 100, digits)}%`;
 };
 const money = (value, currency = 'RON') => isNum(value) ? `${value.toLocaleString('ro-RO', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ${currency}` : '—';
 const signedMoney = (value, currency = 'RON') => isNum(value) ? `${value > 0 ? '+' : ''}${money(value, currency)}` : '—';
 const clamp01 = value => Math.max(0, Math.min(1, Number(value) || 0));
+
+// Romanian counts: "1 gol", "2 goluri", "20 de goluri", "101 goluri" (numbers >= 20 whose last
+// two digits are 00 or >= 20 take "de").
+function plural(count, one, many) {
+  const n = Math.abs(Math.trunc(Number(count) || 0));
+  if (n === 1) return `${count} ${one}`;
+  const rest = n % 100;
+  return `${count} ${n >= 20 && (rest === 0 || rest >= 20) ? 'de ' : ''}${many}`;
+}
+
+// "azi", "acum o zi", "acum 3 zile", "acum 21 de zile".
+function daysAgo(days) {
+  if (!isNum(days)) return '—';
+  if (days <= 0) return 'azi';
+  if (days === 1) return 'acum o zi';
+  return `acum ${plural(days, 'zi', 'zile')}`;
+}
+
+// ISO dates inside server messages ("2026-04-18") -> "18 apr. 2026".
+const humanDates = text => String(text ?? '').replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (_, y, m, d) =>
+  new Date(`${y}-${m}-${d}T12:00:00Z`).toLocaleDateString('ro-RO', {day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'}));
 const toneOf = value => !isNum(value) || Math.abs(value) < 1e-9 ? '' : value > 0 ? 'pos' : 'neg';
 
 function isoDay(offset = 0) {
@@ -75,6 +99,16 @@ function kickoffLabel(value) {
   if (date.toDateString() === today.toDateString()) return `Azi ${fmtTime(value)}`;
   if (date.toDateString() === tomorrow.toDateString()) return `Mâine ${fmtTime(value)}`;
   return `${fmtShortDate(value)} ${fmtTime(value)}`;
+}
+
+// The app's day is the UTC day. In Romania it ends at 03:00 (02:00 in winter): a note says so
+// where the day's games are listed, and it is empty for a browser on UTC.
+function utcDayNote() {
+  const offset = -new Date().getTimezoneOffset();
+  if (!offset) return '';
+  const end = new Date();
+  end.setUTCHours(24, 0, 0, 0);
+  return `Ziua este ziua UTC: include meciurile până la ${fmtTime(end)} (ora ta) din noaptea următoare.`;
 }
 
 function dayChipLabel(offset) {
@@ -246,6 +280,56 @@ async function stakeDialog({title, text, stake = remember('stake', 10)}) {
   return chosen;
 }
 
+// Modal drawer/dialog never outlive the page that opened them (route() calls this).
+function closeOverlays() {
+  ['#drawer', '#dialog'].forEach(selector => {
+    const el = $(selector);
+    if (el?.open) el.close('cancel');
+  });
+}
+
+// Deposit prompt; resolves to the chosen amount or null.
+async function depositDialog({needed = 0, balance = 0, currency = 'RON'} = {}) {
+  let chosen = null;
+  const suggested = [50, 100, 500].find(v => balance + v >= needed) || Math.ceil(needed - balance);
+  const value = await openDialog(`<form method="dialog" class="dialog-body">
+      <h2 class="dialog-title">Depui bani virtuali?</h2>
+      <p class="dialog-text">Portofelul virtual are ${money(balance, currency)}, iar miza este ${money(needed, currency)}. Depune bani fictivi și pariul se plasează imediat.</p>
+      <div class="chip-row" role="group" aria-label="Sume rapide">${[50, 100, 500].map(v => `<button type="button" class="chip" data-quick="${v}">${v} ${esc(currency)}</button>`).join('')}</div>
+      <label class="field">Sumă (${esc(currency)})<input name="amount" type="number" min="0.01" max="1000000" step="0.01" required value="${esc(suggested)}" inputmode="decimal"></label>
+      <p class="fineprint">Bani virtuali, fără miză reală. ${esc(DISCLAIMER)}</p>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" value="cancel" formnovalidate>Renunță</button>
+        <button class="btn btn-primary" value="ok" data-confirm>Depune și joacă</button>
+      </div></form>`, dialog => {
+    const input = dialog.querySelector('input');
+    dialog.querySelectorAll('[data-quick]').forEach(b => b.addEventListener('click', () => { input.value = b.dataset.quick; input.focus(); }));
+    input.focus();
+    input.select();
+    dialog.querySelector('form').addEventListener('submit', () => { chosen = Number(input.value); });
+  });
+  return value === 'ok' && chosen > 0 ? chosen : null;
+}
+
+// POST /api/wallet/bet; with too little virtual money, offer a deposit and retry once.
+// Resolves to the wallet, or null when the user gave up (a toast already said why).
+async function placeBet(body) {
+  try {
+    return await post('/api/wallet/bet', body);
+  } catch (error) {
+    if (!(error.status === 400 && /Sold insuficient/i.test(error.message))) throw error;
+    let wallet = {balance: 0, currency: 'RON'};
+    try { wallet = await api('/api/wallet'); } catch { /* the dialog still works */ }
+    const amount = await depositDialog({needed: body.stake, balance: wallet.balance || 0, currency: wallet.currency || 'RON'});
+    if (amount == null) {
+      toast('Pariul nu a fost plasat: sold virtual insuficient.', 'info', {href: '#/portofel', label: 'Portofel'});
+      return null;
+    }
+    await post('/api/wallet/deposit', {amount});
+    return post('/api/wallet/bet', body);
+  }
+}
+
 function openDrawer(html) {
   const drawer = $('#drawer');
   drawer.innerHTML = `<div class="drawer-inner"><button class="icon-btn drawer-close" type="button" aria-label="Închide">${icon('close')}</button><div class="drawer-content">${html}</div></div>`;
@@ -294,10 +378,13 @@ function emptyState(title, text = '', action = '') {
 }
 
 function errorState(error, retryId = '') {
-  const message = error?.message || String(error || 'Eroare necunoscută.');
+  const message = humanDates(error?.message || String(error || 'Eroare necunoscută.'));
+  // 400/404/422: the request was understood but the settings do not fit (no network problem).
+  const invalid = [400, 404, 409, 422].includes(error?.status);
   const hint = error?.status === 429 ? 'Cota de cereri FlashScore a fost atinsă. Încearcă mai târziu.'
     : error?.status === 503 ? 'Cheia RAPIDAPI_KEY lipsește sau nu este validă (fișierul .env).' : '';
-  return `<div class="state state-error" role="alert"><div class="state-art" aria-hidden="true">${icon('warn')}</div><h3>Nu am putut încărca datele</h3><p>${esc(message)}</p>${hint ? `<p class="muted">${esc(hint)}</p>` : ''}${retryId ? `<button class="btn btn-secondary" type="button" id="${esc(retryId)}">Încearcă din nou</button>` : ''}</div>`;
+  const title = invalid ? 'Verifică setările' : 'Nu am putut încărca datele';
+  return `<div class="state ${invalid ? 'state-invalid' : 'state-error'}" role="alert"><div class="state-art" aria-hidden="true">${icon('warn')}</div><h3>${esc(title)}</h3><p>${esc(message)}</p>${hint ? `<p class="muted">${esc(hint)}</p>` : ''}${retryId && !invalid ? `<button class="btn btn-secondary" type="button" id="${esc(retryId)}">Încearcă din nou</button>` : ''}</div>`;
 }
 
 function warningsBox(warnings, title = 'Atenție') {
@@ -324,7 +411,8 @@ function matchHref(id, sport) {
 
 // --- legs and tickets ----------------------------------------------------------------------
 
-function legRow(leg, {compact = false, reason = true} = {}) {
+// options.shared: other tickets holding the same leg ("x5, x10"): a loss sinks them all.
+function legRow(leg, {compact = false, reason = true, shared = ''} = {}) {
   const status = leg.status || 'pending';
   const score = leg.score ? `<span class="leg-score">${esc(leg.score)}</span>` : '';
   const ev = isNum(leg.ev) ? `<span class="ev ${toneOf(leg.ev)}" title="Valoare așteptată = probabilitate × cotă − 1">EV ${signedPct(leg.ev)}</span>` : '';
@@ -344,13 +432,13 @@ function legRow(leg, {compact = false, reason = true} = {}) {
       <div class="pick-prob" title="Probabilitate estimată">${probBar(leg.probability)}<span>${pct(leg.probability)}</span></div>
       <div class="pick-odds" title="Cotă"><small>cotă</small><b>${num(leg.odds)}</b></div>
     </div>
-    <div class="leg-foot">${gradeBadge(leg.grade, leg.confidence)}${ev}${status !== 'pending' ? statusBadge(status) : ''}${score}</div>
+    <div class="leg-foot">${gradeBadge(leg.grade, leg.confidence)}${ev}${status !== 'pending' ? statusBadge(status) : ''}${score}${shared ? `<span class="shared-note" title="Aceeași selecție pe mai multe bilete: o pierdere le pierde pe toate">apare și în ${esc(shared)}</span>` : ''}</div>
     ${reason && leg.reason ? `<details class="reason"><summary>De ce această selecție?</summary><p>${esc(leg.reason)}</p></details>` : ''}
   </li>`;
 }
 
 // A recommendation / generated ticket (§4.4, §10.2). options.actions: html for the footer.
-function ticketCard(ticket, {title, actions = '', id = '', note = true} = {}) {
+function ticketCard(ticket, {title, actions = '', id = '', note = true, shared = null} = {}) {
   const target = ticket.target ?? ticket.target_odds;
   const status = ticket.status || 'pending';
   const heading = title || (isNum(target) ? `Bilet cota ${num(target, target < 10 ? 1 : 0).replace(/\.0$/, '')}` : 'Bilet');
@@ -360,6 +448,7 @@ function ticketCard(ticket, {title, actions = '', id = '', note = true} = {}) {
     return `<article class="card ticket ticket-${tier} ticket-unavailable" ${id ? `id="${esc(id)}"` : ''}>
       <header class="ticket-head"><span class="ticket-badge">${esc(badge)}</span><div class="ticket-title"><h3>${esc(heading)}</h3><span>Bilet indisponibil</span></div>${statusBadge('unavailable')}</header>
       <div class="ticket-empty"><p>${esc(ticket.reason || ticket.rationale || 'Nu există selecții eligibile pentru această cotă.')}</p></div>
+      ${actions ? `<footer class="ticket-actions">${actions}</footer>` : ''}
     </article>`;
   }
   const sports = [...new Set(ticket.legs.map(l => l.sport))];
@@ -375,7 +464,7 @@ function ticketCard(ticket, {title, actions = '', id = '', note = true} = {}) {
       <div class="tk"><small>Șansă estimată</small><b>${pct(ticket.probability, ticket.probability < 0.1 ? 1 : 0)}</b>${probBar(ticket.probability, 'thin')}</div>
       <div class="tk"><small>Valoare (EV)</small><b class="${toneOf(ticket.ev)}">${signedPct(ticket.ev)}</b></div>
     </div>
-    <ol class="legs">${ticket.legs.map(leg => legRow(leg)).join('')}</ol>
+    <ol class="legs">${ticket.legs.map(leg => legRow(leg, {shared: shared ? shared(leg) : ''})).join('')}</ol>
     ${note && (ticket.rationale || ticket.assumption) ? `<details class="ticket-why"><summary>Cum a fost construit biletul</summary>${ticket.rationale ? `<p>${esc(ticket.rationale)}</p>` : ''}${ticket.assumption ? `<p class="muted">${esc(ticket.assumption)}</p>` : ''}</details>` : ''}
     ${actions ? `<footer class="ticket-actions">${actions}</footer>` : ''}
   </article>`;
@@ -464,7 +553,9 @@ function lineChart(container, series, options = {}) {
     });
     if (isNum(options.reference)) {
       svgEl('line', {x1: pad.l, x2: width - pad.r, y1: Y(options.reference), y2: Y(options.reference), class: 'ref'}, svg);
-      if (options.referenceLabel) svgEl('text', {x: width - pad.r, y: Y(options.reference) - 6, 'text-anchor': 'end', class: 'axis ref-label'}, svg).textContent = options.referenceLabel;
+      // Left end, just above the line: the series' latest (right-hand) points never sit on it.
+      const labelY = Math.max(pad.t + 10, Y(options.reference) - 6);
+      if (options.referenceLabel) svgEl('text', {x: pad.l + 6, y: labelY, 'text-anchor': 'start', class: 'axis ref-label'}, svg).textContent = options.referenceLabel;
     }
     series.forEach((s, index) => {
       const pts = s.points.filter(p => isNum(p.y));
@@ -516,38 +607,53 @@ function lineChart(container, series, options = {}) {
 }
 
 // Normal density chart with the region above `split` highlighted (basketball margin/total).
+// Drawn at the container's width (no viewBox scaling, so text keeps its CSS size on a phone);
+// the low/high labels sit in the top corners, away from the curve's peak.
 function densityChart(container, {mean, sd, split = 0, lowLabel, highLabel, unit = 'puncte', label}) {
   if (!container || !isNum(mean) || !(sd > 0)) return;
-  const width = 560, height = 170, pad = {l: 12, r: 12, t: 16, b: 30};
-  const lo = mean - 3.2 * sd, hi = mean + 3.2 * sd;
-  const pdf = x => Math.exp(-0.5 * ((x - mean) / sd) ** 2);
-  const X = x => pad.l + ((x - lo) / (hi - lo)) * (width - pad.l - pad.r);
-  const Y = y => pad.t + (1 - y) * (height - pad.t - pad.b);
-  const svg = svgEl('svg', {viewBox: `0 0 ${width} ${height}`, class: 'chart density', role: 'img', 'aria-label': label || 'Distribuție'});
-  const steps = 120;
-  const points = Array.from({length: steps + 1}, (_, i) => lo + ((hi - lo) * i) / steps);
-  const path = points.map((x, i) => `${i ? 'L' : 'M'}${X(x).toFixed(1)},${Y(pdf(x)).toFixed(1)}`).join('');
-  const s = Math.max(lo, Math.min(hi, split));
-  const left = points.filter(x => x <= s);
-  const right = points.filter(x => x >= s);
-  const area = (pts, cls) => {
-    if (pts.length < 2) return;
-    const d = pts.map((x, i) => `${i ? 'L' : 'M'}${X(x).toFixed(1)},${Y(pdf(x)).toFixed(1)}`).join('');
-    svgEl('path', {d: `${d}L${X(pts[pts.length - 1]).toFixed(1)},${Y(0)}L${X(pts[0]).toFixed(1)},${Y(0)}Z`, class: `area ${cls}`}, svg);
+  const draw = () => {
+    const width = Math.max(260, container.clientWidth || 560);
+    const height = width < 420 ? 180 : 190;
+    const pad = {l: 12, r: 12, t: 30, b: 28};
+    const lo = mean - 3.2 * sd, hi = mean + 3.2 * sd;
+    const pdf = x => Math.exp(-0.5 * ((x - mean) / sd) ** 2);
+    const X = x => pad.l + ((x - lo) / (hi - lo)) * (width - pad.l - pad.r);
+    const Y = y => pad.t + (1 - y) * (height - pad.t - pad.b);
+    const svg = svgEl('svg', {viewBox: `0 0 ${width} ${height}`, width, height, class: 'chart density', role: 'img', 'aria-label': label || 'Distribuție'});
+    const steps = 120;
+    const points = Array.from({length: steps + 1}, (_, i) => lo + ((hi - lo) * i) / steps);
+    const path = points.map((x, i) => `${i ? 'L' : 'M'}${X(x).toFixed(1)},${Y(pdf(x)).toFixed(1)}`).join('');
+    const s = Math.max(lo, Math.min(hi, split));
+    const area = (pts, cls) => {
+      if (pts.length < 2) return;
+      const d = pts.map((x, i) => `${i ? 'L' : 'M'}${X(x).toFixed(1)},${Y(pdf(x)).toFixed(1)}`).join('');
+      svgEl('path', {d: `${d}L${X(pts[pts.length - 1]).toFixed(1)},${Y(0)}L${X(pts[0]).toFixed(1)},${Y(0)}Z`, class: `area ${cls}`}, svg);
+    };
+    area(points.filter(x => x <= s), 'low');
+    area(points.filter(x => x >= s), 'high');
+    svgEl('path', {d: path, class: 'line'}, svg);
+    svgEl('line', {x1: X(s), x2: X(s), y1: pad.t - 4, y2: Y(0), class: 'ref'}, svg);
+    svgEl('line', {x1: pad.l, x2: width - pad.r, y1: Y(0), y2: Y(0), class: 'grid'}, svg);
+    [lo + 0.2 * sd, mean, hi - 0.2 * sd].forEach((v, i) => {
+      svgEl('text', {x: X(v), y: height - 8, 'text-anchor': i === 0 ? 'start' : i === 2 ? 'end' : 'middle', class: 'axis'}, svg).textContent = `${v > 0 && split === 0 ? '+' : ''}${num(v, 0)}`;
+    });
+    svgEl('text', {x: pad.l, y: 14, 'text-anchor': 'start', class: 'axis strong side-low'}, svg).textContent = `◀ ${lowLabel || ''}`;
+    svgEl('text', {x: width - pad.r, y: 14, 'text-anchor': 'end', class: 'axis strong side-high'}, svg).textContent = `${highLabel || ''} ▶`;
+    svg.appendChild(svgEl('title')).textContent = `${label || ''} medie ${num(mean, 1)} ${unit}, abatere ${num(sd, 1)}`;
+    container.textContent = '';
+    container.appendChild(svg);
   };
-  area(left, 'low');
-  area(right, 'high');
-  svgEl('path', {d: path, class: 'line'}, svg);
-  svgEl('line', {x1: X(s), x2: X(s), y1: pad.t - 6, y2: Y(0), class: 'ref'}, svg);
-  svgEl('line', {x1: pad.l, x2: width - pad.r, y1: Y(0), y2: Y(0), class: 'grid'}, svg);
-  [lo + 0.2 * sd, mean, hi - 0.2 * sd].forEach((v, i) => {
-    svgEl('text', {x: X(v), y: height - 10, 'text-anchor': i === 0 ? 'start' : i === 2 ? 'end' : 'middle', class: 'axis'}, svg).textContent = `${v > 0 && split === 0 ? '+' : ''}${num(v, 0)}`;
-  });
-  svgEl('text', {x: X(s) - 6, y: pad.t + 8, 'text-anchor': 'end', class: 'axis strong'}, svg).textContent = lowLabel || '';
-  svgEl('text', {x: X(s) + 6, y: pad.t + 8, 'text-anchor': 'start', class: 'axis strong'}, svg).textContent = highLabel || '';
-  svg.appendChild(svgEl('title')).textContent = `${label || ''} medie ${num(mean, 1)} ${unit}, abatere ${num(sd, 1)}`;
-  container.textContent = '';
-  container.appendChild(svg);
+  draw();
+  if ('ResizeObserver' in window) {
+    let last = container.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (Math.abs(container.clientWidth - last) < 8) return;
+      last = container.clientWidth;
+      draw();
+    });
+    observer.observe(container);
+    onLeave(() => observer.disconnect());
+  }
 }
 
 // Horizontal probability bars list.

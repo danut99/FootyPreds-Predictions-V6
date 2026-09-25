@@ -27,6 +27,7 @@ rely on them, and footypreds/tests/test_excel_client.py enforces them):
   image proxy (``/api/img?u=...``); Excel shows them as text.
 """
 
+import asyncio
 import csv
 import io
 import json
@@ -627,7 +628,7 @@ SIM_LADDER_COLUMNS = (
     "final",
     "status",
 )
-SIM_EQUITY_COLUMNS = ("date", "bankroll")
+SIM_EQUITY_COLUMNS = ("date", "bankroll", "net", "value", "ladder_index")
 SIM_SECTIONS = {
     "days": SIM_DAY_COLUMNS,
     "summary": SIM_SUMMARY_COLUMNS,
@@ -657,6 +658,7 @@ RECENT_COLUMNS = (
     "loaded_matches",
     "requests",
     "message",
+    "planned",
 )
 WALLET_SUMMARY_COLUMNS = (
     "currency",
@@ -1907,23 +1909,51 @@ def clock():
     return time.monotonic()
 
 
+def sim_key(app_state, body):
+    """Memo key of one simulation: the request body, plus the store version for the datasets
+    read from the local store ("recent", "local-*"), so newly loaded days give a new run."""
+    key = json.dumps(body, sort_keys=True)
+    dataset = str(body.get("dataset") or "")
+    if dataset == "recent" or dataset.startswith("local-"):
+        store = getattr(app_state, "store", None)
+        key += f"|store={getattr(store, 'version', 0)}"
+    return key
+
+
 async def simulation(request, body):
+    """POST /api/simulate once per key: parallel section requests (Power Query "Refresh All")
+    share one computation, and the result is kept SIM_TTL seconds after it finished."""
     app_state = state(request)
     memo = getattr(app_state, "excel_sim_memo", None)
     if memo is None:
         memo = app_state.excel_sim_memo = {}
-    key = json.dumps(body, sort_keys=True)
-    now = clock()
+    running = getattr(app_state, "excel_sim_running", None)
+    if running is None:
+        running = app_state.excel_sim_running = {}
+    key = sim_key(app_state, body)
     hit = memo.get(key)
-    if hit is not None and hit[0] > now:
+    if hit is not None and hit[0] > clock():
         return hit[1]
-    data = await call_api(request, "POST", "/api/simulate", body=body)
-    for old in [k for k, (expires, _) in memo.items() if expires <= now]:
-        memo.pop(old, None)
-    while len(memo) >= SIM_MEMO_SIZE:
-        memo.pop(next(iter(memo)))
-    memo[key] = (now + SIM_TTL, data)
-    return data
+    task = running.get(key)
+    if task is None:
+        task = asyncio.ensure_future(call_api(request, "POST", "/api/simulate", body=body))
+        running[key] = task
+
+        def finished(done, key=key):
+            running.pop(key, None)
+            if done.cancelled() or done.exception() is not None:
+                return
+            now = clock()
+            for old in [k for k, (expires, _) in memo.items() if expires <= now]:
+                memo.pop(old, None)
+            while len(memo) >= SIM_MEMO_SIZE:
+                memo.pop(next(iter(memo)))
+            # The TTL starts when the run is done: a long first run is not stored expired.
+            memo[key] = (now + SIM_TTL, done.result())
+
+        task.add_done_callback(finished)
+    # shield: a client that disconnects does not cancel the run the others wait for.
+    return await asyncio.shield(task)
 
 
 def sim_summary_row(data):

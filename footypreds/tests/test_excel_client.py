@@ -733,6 +733,7 @@ LAYOUT_TABLES = {
         xa.SIM_LADDER_COLUMNS,
     ),
     "LayoutSimDays": ("GET", "/api/excel/simulate", {"section": "days"}, xa.SIM_DAY_COLUMNS),
+    "LayoutSimEquity": ("GET", "/api/excel/simulate", {"section": "equity"}, xa.SIM_EQUITY_COLUMNS),
     "LayoutSimDatasets": ("GET", "/api/excel/simulate/datasets", {}, xa.SIM_DATASET_COLUMNS),
     "LayoutWalletSummary": (
         "GET",
@@ -1594,7 +1595,9 @@ def test_escape_is_never_reported_as_server_down():
     assert not any("ERR_SERVER" in x for x in http)
     failure = [item[1] for item in body_of("RaiseHttpFailure")]
     assert failure[0] == "If failNumber = 18 Then Err.Raise 18"
-    assert "ERR_SERVER" in failure[1]
+    # A receive timeout means "still computing", never "start the server".
+    assert failure[1] == "If failNumber = HTTP_TIMEOUT_ERROR Then"
+    assert failure[2].startswith("Err.Raise ERR_API") and "ERR_SERVER" in failure[-1]
     for name, label in (("LoadCompetitions", "Quiet:"), ("ErrorFromTable", "Raw:")):
         body = [item[1] for item in body_of(name)]
         assert body[body.index(label) + 1] == "If Err.Number = 18 Then Err.Raise 18", name
@@ -2423,3 +2426,137 @@ def test_power_query_types_every_product_text_column_as_text(multi):
                     assert column in listed, (path, column)
     finally:
         multi.post("/api/wallet/reset")
+
+
+# --- simulation memo: TTL from the end of the run, one run for parallel sections, store-aware
+
+
+class _MemoApp:
+    def __init__(self):
+        from types import SimpleNamespace
+
+        self.state = SimpleNamespace(store=SimpleNamespace(version=1))
+
+
+class _MemoRequest:
+    def __init__(self, app):
+        self.app = app
+
+
+def test_simulation_memo_starts_ttl_after_the_run_and_shares_parallel_runs(monkeypatch):
+    import asyncio
+
+    now = [1000.0]
+    calls = []
+
+    async def slow(request, method, path, params=None, body=None):
+        calls.append(body)
+        await asyncio.sleep(0.01)
+        now[0] += 70  # a run longer than SIM_TTL
+        return {"n": len(calls)}
+
+    monkeypatch.setattr(xa, "clock", lambda: now[0])
+    monkeypatch.setattr(xa, "call_api", slow)
+    request = _MemoRequest(_MemoApp())
+    body = {"dataset": "football", "bankroll": 5}
+
+    async def scenario():
+        # Power Query "Refresh All": five sections at once -> one simulation.
+        first = await asyncio.gather(*(xa.simulation(request, body) for _ in range(5)))
+        assert first == [{"n": 1}] * 5 and len(calls) == 1
+        # 70 s after the start but just after the end: still the same run.
+        now[0] += 1
+        assert await xa.simulation(request, body) == {"n": 1}
+        now[0] += xa.SIM_TTL
+        assert await xa.simulation(request, body) == {"n": 2}
+
+    asyncio.run(scenario())
+
+
+def test_simulation_memo_of_local_datasets_follows_the_store(monkeypatch):
+    import asyncio
+
+    calls = []
+
+    async def fast(request, method, path, params=None, body=None):
+        calls.append(body)
+        return {"n": len(calls)}
+
+    monkeypatch.setattr(xa, "clock", lambda: 5.0)
+    monkeypatch.setattr(xa, "call_api", fast)
+    app = _MemoApp()
+    request = _MemoRequest(app)
+    recent = {"dataset": "recent", "days": 7, "sports": ["football"]}
+    fixed = {"dataset": "football"}
+
+    async def scenario():
+        assert await xa.simulation(request, recent) == {"n": 1}
+        assert await xa.simulation(request, fixed) == {"n": 2}
+        assert await xa.simulation(request, recent) == {"n": 1}
+        # More recent days were loaded (store write): the next click runs a new simulation.
+        app.state.store.version += 1
+        assert await xa.simulation(request, recent) == {"n": 3}
+        assert await xa.simulation(request, fixed) == {"n": 2}
+
+    asyncio.run(scenario())
+
+
+# --- review fixes: busy guard, timeouts, competition per sport, recent prompt, cash-out ------
+
+
+def test_every_macro_refuses_to_start_while_another_runs():
+    for name, proc in PROCS.items():
+        if proc["scope"] != "Public":
+            continue
+        body = [item[1] for item in body_of(name)]
+        guard = body.index("If IsBusy() Then Exit Sub")
+        assert guard < body.index("On Error GoTo Fail"), name
+    begin = [item[1] for item in body_of("BeginWork")]
+    end = [item[1] for item in body_of("EndWork")]
+    assert begin[0] == "m_busy = True" and end[0] == "m_busy = False"
+
+
+def test_long_computations_wait_longer_and_timeouts_are_named():
+    assert "Private Const HTTP_TIMEOUT_ERROR As Long = -2147012894" in BAS_TEXT
+    timeout = " ".join(item[2] for item in body_of("ReceiveTimeout"))
+    assert "/api/excel/simulate" in timeout and "/api/excel/recommendations" in timeout
+    assert "LONG_RECEIVE_TIMEOUT_MS" in timeout
+    http = " ".join(item[1] for item in body_of("HttpCall"))
+    assert "ReceiveTimeout(url)" in http
+    failure = " ".join(item[2] for item in body_of("RaiseHttpFailure"))
+    assert "prima rulare" in failure
+    power_query = (CLIENT_DIR / "PowerQuery.md").read_text(encoding="utf-8")
+    assert "Timeout = #duration(0, 0, 10, 0)" in power_query
+
+
+def test_competition_filter_resets_when_the_sport_changes():
+    competition = [item[1] for item in body_of("PanelCompetition")]
+    assert any("LIST_COMP_SPORT" in x and "PanelSport()" in x for x in competition)
+    assert "ResetCompetition" in competition
+    loader = " ".join(item[2] for item in body_of("LoadCompetitions"))
+    assert "ws.Range(LIST_COMP_SPORT).Value = sport" in loader and "ResetCompetition" in loader
+    reset = " ".join(item[1] for item in body_of("ResetCompetition"))
+    assert "CELL_COMP" in reset
+
+
+def test_recent_load_asks_before_spending_requests_and_keeps_loaded_days(multi):
+    prepare = [item[2] for item in body_of("PrepareRecentDays")]
+    text = " ".join(prepare)
+    ask = next(i for i, x in enumerate(prepare) if "MsgBox" in x)
+    post = next(i for i, x in enumerate(prepare) if '"POST"' in x)
+    assert ask < post and "planned" in text and "vbYesNoCancel" in text
+    assert 'loadState = "failed" Or loadState = "interrupted"' in text
+    assert "days_loaded" in text
+    # The API answers the planned request count the question shows.
+    header, rows = parse_tsv(get(multi, "/api/excel/simulate/recent", days="3", sports="football"))
+    assert "planned" in header and int(rows[0]["planned"]) >= 0
+
+
+def test_simulation_sheet_sends_the_cash_out_and_charts_net_for_ladders():
+    query = " ".join(item[2] for item in body_of("SimulationQuery"))
+    assert "&max_days=" in query and "SimMaxDays()" in query
+    run = " ".join(item[2] for item in body_of("RuleazaSimularea"))
+    assert "&section=equity" in run and "LayoutSimEquity()" in run
+    assert "total_invested" in run and "total_returned" in run
+    equity = {e[0] for e in LAYOUTS["LayoutSimEquity"]}
+    assert {"date", "net"} <= equity <= set(xa.SIM_EQUITY_COLUMNS)
