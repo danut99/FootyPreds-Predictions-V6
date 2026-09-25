@@ -1,324 +1,159 @@
-# FlashScore Predictor Pro V6
+# FootyPreds V7
 
-A professional football match prediction engine built in Excel VBA, combining advanced statistical models with real-time data from the FlashScore API to generate accurate match predictions and betting recommendations across 10+ European leagues.
+Aplicație locală de analiză fotbalistică: **Python + FastAPI + SQLite**, cu frontend **HTML/CSS/JavaScript**, fără framework sau build frontend. Excel nu mai este necesar.
 
-## Table of Contents
+**85% este un prag estimat de selecție, nu o acuratețe demonstrată.** Modelul actual este un reper Poisson necalibrat. Jurnalul real, evaluarea retrospectivă și demo-ul sunt separate.
 
-- [Overview](#overview)
-- [What's New in V6](#whats-new-in-v6)
-- [Supported Leagues](#supported-leagues)
-- [Prediction Models](#prediction-models)
-- [Betting Markets](#betting-markets)
-- [Setup & Installation](#setup--installation)
-- [Usage](#usage)
-- [Bankroll Management](#bankroll-management)
-- [Results Tracking](#results-tracking)
-- [Configuration](#configuration)
-- [Version History](#version-history)
-- [API Reference](#api-reference)
+## Pornire rapidă — Windows
 
----
+Necesită Python 3.11+. Din rădăcina proiectului:
 
-## Overview
-
-FlashScore Predictor Pro V6 is the latest iteration of a football prediction system that uses a **Dixon-Coles model** with **Bivariate Poisson distribution**, **Bayesian shrinkage**, **Platt scaling**, and **xG blending** to produce calibrated match outcome probabilities. It fetches real-time data from the FlashScore API, enriches it with local xG datasets, and outputs actionable predictions with confidence tiers and recommended stakes.
-
-### Key Capabilities
-
-- Predict match outcomes (1X2, Double Chance, Draw No Bet)
-- Over/Under goals and corners markets
-- BTTS (Both Teams to Score) probabilities
-- Correct score matrices (7x7)
-- Value bet detection via Expected Value analysis
-- Automated ticket generation with bankroll-safe staking
-- Per-match tactical summaries and team profiling
-- Full results tracking with hit rate, ROI, and Brier score
-
----
-
-## What's New in V6
-
-| Feature | V5 | V6 |
-|---|---|---|
-| **Platt Scaling** | A=1.2, B=-0.06 | A=1.15, B=-0.075 (better calibration) |
-| **Bayesian Shrinkage** | Factor 10 | Factor 8 (stronger regression to mean) |
-| **Lambda Bounds** | 0.3 - 4.0 | 0.4 - 3.5 (tighter, more realistic) |
-| **Momentum Scoring** | -- | Win/draw/loss streak detection |
-| **Corner Predictions** | -- | Poisson-based O/U 8.5, 9.5, 10.5 |
-| **Team Profiles** | -- | ATTACKING / DEFENSIVE / BALANCED classification |
-| **Win-to-Nil / Clean Sheet** | -- | Dedicated probability outputs |
-| **Exact Goals Ranges** | -- | 0-1, 2-3, 4+ goal probabilities |
-| **Home/Away Over 0.5 Goals** | -- | Individual team goal expectations |
-| **Best Picks of the Day** | -- | Curated top recommendations across all markets |
-| **Match Summaries** | -- | Generated tactical narratives per game |
-| **Results Tracking Sheet** | -- | Accuracy measurement with hit rate & ROI |
-| **Max Picks Per Ticket** | 4-8 | 3 (higher quality, lower variance) |
-
----
-
-## Supported Leagues
-
-| League | Country |
-|---|---|
-| Premier League | England |
-| LaLiga | Spain |
-| Serie A | Italy |
-| Bundesliga | Germany |
-| Ligue 1 | France |
-| Superliga | Romania |
-| Jupiler Pro League | Belgium |
-| Super League | Switzerland |
-| Primeira Liga | Portugal |
-| Super Lig | Turkey |
-
----
-
-## Prediction Models
-
-### Dixon-Coles Model
-
-The core engine uses the **Dixon-Coles** extension of the Poisson model, which corrects for the dependency between low-scoring outcomes (0-0, 1-0, 0-1, 1-1) via a tau correction factor.
-
-- **Rho (rho):** -0.04
-- **Lambda3:** 0.08 (Bivariate Poisson correlation parameter)
-
-### Bivariate Poisson Distribution
-
-Goal expectations for home and away teams are modeled as correlated Poisson random variables, capturing the tendency for match scorelines to be interdependent.
-
-### Bayesian Shrinkage
-
-Team attack and defense ratings are shrunk toward the league mean with a factor of **8**, preventing overreaction to small sample sizes early in the season.
-
-### Platt Scaling
-
-Final probabilities are passed through a sigmoid calibration function (A=1.15, B=-0.075) to ensure well-calibrated outputs.
-
-### xG Blending
-
-When available, predictions blend **70% xG data** with **30% actual goals** to better capture underlying performance rather than results variance.
-
-### Momentum Scoring
-
-Recent form is weighted with exponential time-decay across the last 5 matches, with additional streak bonuses/penalties for consecutive wins or losses.
-
-### ELO-Inspired Power Ratings
-
-Teams receive strength ratings updated after each matchday, with a home advantage boost of ~3 ELO points.
-
----
-
-## Betting Markets
-
-### Pre-Match Markets
-
-| Market | Description |
-|---|---|
-| **1X2** | Home / Draw / Away win probabilities |
-| **Double Chance** | 1X, X2, 12 combinations |
-| **Draw No Bet** | Home or Away (draw stakes returned) |
-| **Over/Under Goals** | O/U 0.5, 1.5, 2.5, 3.5 |
-| **BTTS** | Both Teams to Score Yes/No |
-| **Over/Under Corners** | O/U 8.5, 9.5, 10.5 |
-| **Win-to-Nil** | Home/Away wins without conceding |
-| **Clean Sheet** | Home/Away keeps a clean sheet |
-| **Correct Score** | 7x7 scoreline probability matrix |
-| **HT/FT Patterns** | Half-time / Full-time outcome combinations |
-| **Exact Goals Range** | 0-1, 2-3, 4+ goals |
-
-### Confidence Tiers
-
-Each prediction is assigned a confidence level:
-
-- **ELITE** - Highest confidence, strongest statistical edge
-- **HIGH** - Strong confidence with clear model advantage
-- **MEDIUM** - Moderate confidence, smaller edge
-- **LOW** - Marginal edge, use with caution
-
----
-
-## Setup & Installation
-
-### Prerequisites
-
-- Microsoft Excel (2016 or later recommended) with macros enabled
-- Windows OS
-- Internet connection for API calls
-- RapidAPI key for FlashScore API (`flashscore4.p.rapidapi.com`)
-
-### Installation Steps
-
-1. **Clone/Download** this repository
-2. **Open** `V6 predictions.xlsx` (or the `.xlsm` workbook) in Excel
-3. **Enable macros** when prompted
-4. **Import the VBA code** from `FLASHSCORE_PREDICTOR_PRO_V6.txt`:
-   - Press `Alt+F11` to open the VBA Editor
-   - Import the module or paste the code into a new module
-5. **Configure API keys** in the code constants section
-6. **(Optional)** Place local JSON data files in the configured data path for xG enrichment
-
-### Local Data Files (Optional)
-
-For enhanced xG predictions, place these JSON files in the data directory:
-
-```
-Premier League CurentSeason Statistics.json
-Premier League teams Home statistics golas.json
-Premier League teams Away statistics golas.json
-LaLiga CurrentSeason Statistics.json
-LaLiga teams Home statistics golas.json
-LaLiga teams Away statistics golas.json
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Copy-Item .env.example .env  # doar dacă nu ai deja .env
 ```
 
----
+Completează `RAPIDAPI_KEY` în `.env`, apoi rulează ` .\start.ps1` și deschide **http://127.0.0.1:8000**. Scriptul creează mediul și instalează dependențele dacă `.venv` lipsește. Pentru dezvoltare cu restart automat:
 
-## Usage
-
-### Workflow
-
-```
-1. SETUP          -->  Initialize dashboard (run once)
-2. LOAD BY DATE   -->  Enter date (YYYY-MM-DD), fetch scheduled matches
-3. DEEP ANALYZE   -->  Select a match, run full statistical breakdown
-4. PREDICT ALL    -->  Batch predictions for all loaded matches
-5. VALUE BETS     -->  View EV-filtered selections
-6. CORRECT SCORES -->  View 7x7 scoreline matrices
-7. TRACK RESULTS  -->  Record outcomes and measure accuracy
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-### Step-by-Step
+Cheia furnizată pentru această instalare este deja în `.env`, exclus din Git. Nu apare în HTML, JavaScript sau răspunsurile backendului. Fără cheie, demo-ul și importul CSV funcționează în continuare.
 
-1. **Run Setup** - Click the `SETUP` button to create the dashboard with all control buttons
-2. **Load Matches** - Enter a date and click `LOAD BY DATE` to fetch all scheduled matches for that day
-3. **Select a Match** - Choose a match from the list box on the dashboard
-4. **Deep Analysis** - Click `DEEP ANALYZE` for a detailed breakdown including:
-   - Team attack/defense ratings
-   - Form analysis (last 5 matches)
-   - Head-to-head history
-   - xG comparison
-   - Tactical summary
-   - Recommended bets for this match
-5. **Predict All** - Click `PREDICT ALL` to generate predictions across all matches, including:
-   - Best Picks of the Day
-   - Professional betting tickets (Safe / Balanced / Value)
-6. **Review Output** - Check the `PREDICTIONS` sheet for probabilities and the `VALUE` sheet for EV-positive selections
+### VS Code Live Server
 
-### Excel Sheet Structure
+Poți deschide `web/index.html` cu Live Server pe **5500 sau 5501**. CSS și JavaScript folosesc căi relative; nu este necesar un folder fizic `static`. Backendul Python trebuie să ruleze separat pe **8000**. CORS permite explicit aceste origini locale. Dacă ai versiunea veche în cache, folosește **Ctrl+F5**.
 
-| Sheet | Purpose |
-|---|---|
-| **MAIN** | Dashboard with controls and buttons |
-| **DATA** | Raw match data from API |
-| **ANALYSIS** | Detailed calculations and breakdowns |
-| **PREDICTIONS** | Final predictions and betting tickets |
-| **SCORES** | Correct score probability matrices |
-| **VALUE** | Expected Value filtered selections |
-| **RESULTS** | Accuracy tracking and statistics |
+`/static` este doar un alias oferit de FastAPI pentru fișierele din `web/`. Deschiderea prin `file://` poate afișa stilurile, dar nu este suportată pentru cererile API.
 
----
+## Utilizare
 
-## Bankroll Management
+### Ticket Lab și Plan mode
 
-The system implements a conservative, professional bankroll management framework:
+Pagina principală este acum **Ticket Lab**, cu o interfață gamified, calendar de progres și bilete persistente:
 
-| Parameter | Value |
-|---|---|
-| **Base Bankroll** | EUR 10 |
-| **Safe Stake** | 25% (EUR 2.50) |
-| **Balanced Stake** | 15% (EUR 1.50) |
-| **Value Stake** | 10% (EUR 1.00) |
-| **Daily Loss Limit** | 40% of bankroll |
-| **Max Picks Per Ticket** | 3 |
-| **Staking Model** | Quarter-Kelly Criterion |
+Direcția pentru modulele Daily Tips, Goals Lab și Correct Score este descrisă în [planul produsului](docs/PRODUCT.md), cu stadiul fiecărei funcții.
 
-### Ticket Types
+- **Plan 7 zile**: câte un bilet pentru fiecare zi, cu ținta implicită de cotă 2. Datele planului sunt în UTC.
+- **Bilet custom**: cota aleasă (inclusiv 10), data, maximum 1–5 selecții și probabilitatea minimă per selecție.
+- Generatorul caută cota disponibilă cea mai apropiată în intervalul ±10%; nu inventează o cotă exactă. Pentru cotă 10, presetul permite maximum 5 selecții.
+- O singură selecție per meci; fără echipe repetate. Opțional, fiecare selecție provine din altă ligă.
+- Biletele reale folosesc **numai cotele 1X2** furnizate de lista FlashScore. Nu există ofertă verificată pentru toate piețele modelului. Cotele pot proveni din surse diferite și trebuie reverificate la aceeași casă.
+- Fiecare zi analizează maximum 8 meciuri: până la 17 cereri fără cache/zi, 119/săptămână. Cache-ul reduce acest număr. Meciurile eligibile insuficiente lasă ziua fără bilet, cu explicație.
+- Generarea rulează în fundal, afișează progresul și se poate urmări după reîncărcarea paginii. Un restart întrerupe jobul, păstrând biletele deja create. Se rulează o singură generare simultan, într-un singur proces Uvicorn.
+- **Planurile mele** păstrează ultimele 30 de planuri în listă. **Verifică rezultate** preia scorurile pentru zilele ajunse la termen. O selecție pierdută face biletul nereușit; toate câștigate îl fac reușit. Meciurile fără scor final rămân în așteptare.
+- **Demo** are echipe, scoruri și cote sintetice, nu contribuie la statisticile reale și nu consumă RapidAPI.
 
-- **Safe Ticket** - Conservative selections with highest confidence, larger stakes
-- **Balanced Ticket** - Mixed confidence levels, moderate stakes
-- **Value/Bold Ticket** - Higher odds selections with positive EV, smaller stakes
+Pragul generatorului este separat de filtrul de 85% din Match center. Probabilitatea combinată este produsul probabilităților individuale, sub ipoteza aproximativă de independență; nu este validată pentru bilete și nu garantează rezultat. Nu există plasare automată de pariuri sau mize.
 
-### Safeguards
+### Match center și evaluare
 
-- EV-gating: Only positive Expected Value bets qualify for tickets
-- League diversity: No duplicate leagues within a single ticket
-- Kelly fraction cap: Quarter-Kelly to prevent overbetting
-- Daily loss limit enforced at 40% of bankroll
+1. **Meciuri**: alege data și încarcă FlashScore. Poți căuta după echipă sau ligă.
+2. **Analizează**: încarcă prima pagină de rezultate pentru fiecare echipă, cu cache de 15 minute. Maximum două cereri externe per analiză, când cache-ul lipsește. Analiza în lot procesează maximum 10 meciuri.
+3. **Selecții**: minimum 8 rezultate per echipă, unul în ultimele 90 de zile, plus pragul ales. Maximum o piață per meci. Lipsa datelor sau a probabilității necesare produce „Fără selecție”.
+4. **Rezultate**: prima selecție eligibilă salvată înainte de start rămâne neschimbată. Încarcă din nou data meciului după final pentru decontare. Pragurile schimbate ulterior nu rescriu jurnalul.
+5. **Backtesting**: evaluează istoricul local sau un CSV. Rezultatele retrospective nu intră în jurnalul prospectiv. Demo-ul folosește echipe și scoruri sintetice, etichetate explicit.
 
----
+Predicțiile sunt exclusiv înainte de start. Nu sunt implementate predicții live, cornere sau mize automate. Cotele 1X2 sunt folosite în biletele de analiză; cotele istorice nu sunt date de intrare pentru model.
 
-## Results Tracking
+## Model și evaluare
 
-V6 introduces a built-in results tracking system:
+- Rate de goluri cu avantajul terenului, ponderare temporală (timp de înjumătățire 180 zile) și regularizare către media ligii.
+- Maximum 30 de observații recente per echipă; istoric de maximum 730 zile.
+- O singură matrice Poisson normalizată produce 1X2, șansă dublă, total goluri și ambele marchează.
+- Backtest cronologic: exclude rezultatul meciului evaluat, meciurile simultane și rezultatele mai apropiate de start decât 3 ore.
+- Acuratețe, volum, acoperire, Brier score pentru selecții și interval Wilson 95%.
+- Criteriul intern pentru susținerea țintei: minimum 100 selecții evaluate și limita inferioară Wilson ≥85%. Criteriul este orientativ: meciurile pot fi corelate, iar rezultatele nu garantează performanțe viitoare.
 
-1. Click `INIT RESULTS` to set up the tracking sheet
-2. After matches complete, enter outcomes: **W** (Win), **L** (Loss), **D** (Draw), **V** (Void)
-3. Click `CALC STATS` to compute:
-   - **Hit Rate** - Percentage of winning predictions
-   - **ROI** - Return on Investment across all bets
-   - **Brier Score** - Probability calibration metric (lower = better)
-   - Per-market breakdown of accuracy
+CatBoost/LightGBM sunt candidați pentru etapa următoare, **nu modele deja antrenate în această versiune**. Comparația corectă necesită mai multe sezoane, caracteristici disponibile la momentul predicției și o perioadă de test neatinsă. Vezi [planul modelului](docs/MODEL.md).
 
----
+## Import și colectare istoric
 
-## Configuration
+### Benchmark strict pe meciuri reale
 
-### Key Constants
+În **Backtesting → Deschide raportul strict**, găsești evaluarea pe **7.156 de meciuri reale**: 5.404 pentru istoric inițial și 1.752 în sezonul de test 2024–2025. Sunt cinci ligi: Premier League, La Liga, Bundesliga, Serie A și Ligue 1.
 
-```vba
-API_HOST          = "flashscore4.p.rapidapi.com"
-DC_RHO            = -0.04       ' Dixon-Coles rho parameter
-DC_LAMBDA3        = 0.08        ' Bivariate Poisson correlation
-PLATT_A           = 1.15        ' Platt scaling parameter A
-PLATT_B           = -0.075      ' Platt scaling parameter B
-SHRINKAGE_FACTOR  = 8           ' Bayesian shrinkage strength
-BANKROLL          = 10          ' Base bankroll in EUR
-MAX_DAILY_LOSS    = 0.4         ' 40% daily loss limit
-LAMBDA_MIN        = 0.4         ' Minimum goal expectation
-LAMBDA_MAX        = 3.5         ' Maximum goal expectation
+Rezultat pentru modelul inițial, fără ajustare după test: **52,1% la 1X2**, respectiv **428/477 selecții reușite (89,7%)** la prag fix 85%, cu **27,2% acoperire**. Cotele normalizate au avut 53,6% la 1X2; modelul nu le-a depășit. Procentul selecțiilor pe piețe mixte nu este rezultat pentru bilete combinate și nu garantează performanța viitoare.
+
+```powershell
+.\.venv\Scripts\python.exe -m evaluation.dataset  # 20 CSV-uri publice, fără RapidAPI
+.\.venv\Scripts\python.exe -m evaluation.run      # evaluare offline, fără cereri externe
 ```
 
-### API Key Rotation
+Datele brute, checksum-urile și predicțiile individuale sunt în `data/benchmark/`, excluse din Git. [Raport complet](docs/BENCHMARK.md) · [Protocol și teste adversariale](docs/EVALUATION.md).
 
-V6 supports **4 API keys** with automatic rotation when rate limits are hit. Configure keys in the constants section of the code.
+### CSV și istoric FlashScore
 
----
+CSV UTF-8, maximum 2 MB / 3000 meciuri; `kickoff` include fusul orar. Golurile trebuie să fie scoruri finale pentru timpul regulamentar. ID-urile și meciurile duplicate sunt respinse.
 
-## Version History
+```csv
+id,kickoff,league,home,away,home_goals,away_goals
+m1,2025-01-01T18:00:00+00:00,Example League,Team A,Team B,2,1
+```
 
-| Version | Highlights |
-|---|---|
-| **V2** | Poisson regression, odds-based normalization |
-| **V3** | Dixon-Coles model, power ratings, xG blending, H2H analysis |
-| **V4** | Bivariate Poisson, Platt scaling, stronger H2H weighting |
-| **V5** | EV-gated tickets, Quarter-Kelly staking, bankroll management, 3 ticket types |
-| **V6** | Momentum scoring, improved calibration, corners model, team profiles, results tracking, best picks, match narratives |
+Colectare reală, maximum 31 zile per comandă; fiecare zi fără cache consumă o cerere API:
 
----
+```powershell
+.\.venv\Scripts\python.exe -m app.cli collect --start 2026-09-01 --end 2026-09-07
+.\.venv\Scripts\python.exe -m app.cli backtest --threshold 0.85
+```
 
-## API Reference
+Păstrează aceeași denumire a echipei și a ligii în CSV. Datele xG vechi fără dată de referință nu sunt importate automat.
 
-The system integrates with the FlashScore API via RapidAPI:
+## RapidAPI MCP
 
-| Endpoint | Purpose | Calls |
-|---|---|---|
-| `matches/list-by-date` | Scheduled/completed matches | 1 per load |
-| `matches/details` | Match info (league, venue, scores) | 1 per match |
-| `matches/match/stats` | Live stats (xG, possession, shots) | 1 per match |
-| `matches/odds` | Full odds (1X2, O/U, BTTS, etc.) | 1 per match |
-| `matches/h2h` | Head-to-head history | 1 per match |
-| `matches/standings` | League table (overall/home/away) | 1 per league |
-| `matches/standings/form` | Last 5 matches form | 1 per league |
-| `matches/standings/over-under` | O/U team statistics | 1 per league |
-| `matches/standings/ht-ft` | HT/FT patterns | 1 per league |
+Backendul folosește REST pentru acces predictibil și cache; MCP este disponibil separat pentru clienți AI. Nu este necesar pentru pornirea aplicației.
 
----
+`mcp.example.json` configurează bridge-ul Python către `mcp-remote@0.14.3`. Adaptează cele două căi absolute dacă muți proiectul și adaugă intrarea în configurația clientului MCP. Necesită Node.js/npx; prima pornire poate descărca pachetul. Cheia este citită din `.env` și transmisă prin variabilă de mediu, fără a fi scrisă în JSON.
 
-## Disclaimer
+Verificare explicită a conexiunilor reale (consumă cereri din abonament):
 
-This tool is intended for educational and analytical purposes. Sports betting carries financial risk. Always gamble responsibly and within your means. Past prediction accuracy does not guarantee future results.
+```powershell
+.\.venv\Scripts\python.exe scripts/check_connections.py --mcp
+```
 
----
+Pe 21 septembrie 2026 au fost verificate REST, `initialize` și `tools/list`; MCP a expus 44 de instrumente. Aceasta verifică serviciul, fără a înregistra automat serverul în clientul AI. Parametrii bridge-ului urmează [documentația mcp-remote](https://github.com/punkpeye/mcp-remote#custom-headers).
 
-## License
+## Structură și dezvoltare
 
-This project is proprietary. All rights reserved.
+```text
+app/          API, model, adaptor FlashScore, SQLite, CLI și bridge MCP
+web/          index.html, style.css, app.js
+tests/        teste unitare și de integrare, fără rețea
+scripts/      verificări explicite de conexiune și browser
+data/         SQLite/cache local, exclus din Git
+evaluation/   protocol fix, dataset real și evaluator cu scoruri ascunse
+docs/         model, migrare, protocol și raport benchmark
+legacy/       arhiva V6; nu este folosită de runtime
+```
+
+Python: patru spații, `snake_case`, constante `UPPER_CASE`, Ruff. Instrucțiunile VBA din `AGENTS.md` descriu versiunea veche și au fost păstrate nemodificate; comenzile V7 sunt cele de aici.
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m ruff check app tests scripts evaluation
+.\.venv\Scripts\python.exe -m ruff format --check app tests scripts evaluation
+node --check web/app.js
+```
+
+Verificări browser, cu serverul Python pornit; nu consumă API extern:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-browser.txt
+.\.venv\Scripts\python.exe -m playwright install chromium
+.\.venv\Scripts\python.exe scripts/browser_smoke.py
+.\.venv\Scripts\python.exe scripts/live_server_smoke.py  # portul 5501 trebuie să fie liber
+.\.venv\Scripts\python.exe scripts/studio_smoke.py       # plan 7 zile, custom 10, raport strict
+.\.venv\Scripts\python.exe scripts/competitions_smoke.py # ligi multiple, naționale, filtre și mobil
+```
+
+Capturile sunt în `artifacts/`, exclus din Git. GitHub Actions rulează verificările Python fără secrete. În PR descrie schimbarea, testele, efectele asupra modelului și adaugă capturi pentru modificări UI.
+
+## Configurație și arhivă
+
+`DATABASE_PATH` configurează SQLite; `CACHE_TTL_SECONDS` configurează cache-ul. Aplicația este concepută pentru localhost, fără autentificare publică. Nu o expune pe internet în această formă.
+
+Versiunile vechi au fost mutate, nu șterse. Arhiva, workbookul și extragerea locală pot conține chei istorice; sunt excluse din noile adăugări Git. Cheile deja expuse în mesaje sau versiuni vechi trebuie înlocuite în RapidAPI; mutarea fișierelor nu le revocă și nu curăță istoricul Git. Vezi [migrarea](docs/MIGRATION.md).

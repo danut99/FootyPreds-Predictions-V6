@@ -1,0 +1,14 @@
+{
+  "name": "V7 locked chronological benchmark 2024-25",
+  "history_seasons": ["2122", "2223", "2324"],
+  "test_season": "2425",
+  "leagues": ["E0", "SP1", "D1", "I1", "F1"],
+  "selection_threshold": 0.85,
+  "minimum_team_history": 8,
+  "rich_history_minimum": 20,
+  "prediction_time": "start of UTC match date; only previous dates available",
+  "primary_metric": "1X2 mean log loss over every holdout match",
+  "secondary_metrics": ["1X2 accuracy", "1X2 Brier mean across 3 classes", "selected accuracy", "coverage", "calibration", "per-league performance"],
+  "bootstrap": {"unit": "match date", "iterations": 1000, "seed": 7},
+  "notes": "Fixed before the first evaluation. Do not optimize using this holdout. Historical odds are only an external reference; their exact snapshot time is unspecified."
+}
