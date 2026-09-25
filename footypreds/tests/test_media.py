@@ -331,21 +331,31 @@ def test_recommendations_tickets_and_wallet_legs_show_display_logos(client):
     data = client.get(f"/api/recommendations?day={DAY}").json()
     legs = [leg for t in data["tickets"] for leg in t["legs"]] + data["singles"]
     assert {leg["sport"] for leg in legs} >= {"football", "tennis"}
+    store = client.app.state.store
+
+    def check(item):
+        # Display URLs exist exactly when the stored match has upstream images (the synthetic
+        # football day has none; a few captured teams have none either).
+        match = store.match(item["match_id"])
+        for field in ("home_logo", "away_logo", "league_logo"):
+            assert (item[field] is None) == (getattr(match, field) is None), field
+        assert_logos(item, required=False)
+
     for item in legs:
-        # The synthetic football day of the shared Fake has no images; the captured lists do.
-        assert_logos(item, required=item["sport"] != "football")
+        check(item)
+    assert any(item["home_logo"] for item in legs if item["sport"] != "football")
     generated = client.post("/api/tickets/generate", json={"day": DAY, "target_odds": 3}).json()
     assert generated["ticket"]["legs"]
     for item in generated["ticket"]["legs"] + [
         item for alternative in generated["alternatives"] for item in alternative["legs"]
     ]:
-        assert_logos(item, required=item["sport"] != "football")
+        check(item)
     client.post("/api/wallet/deposit", json={"amount": 100})
     single = next(s for s in data["singles"] if s["sport"] == "tennis")
     body = {"stake": 5, "legs": [{"match_id": single["match_id"], "key": single["key"]}]}
     placed = client.post("/api/wallet/bet", json=body)
     assert placed.status_code == 200, placed.text
-    assert_logos(placed.json()["bets"][0]["legs"][0])
+    check(placed.json()["bets"][0]["legs"][0])
 
 
 def test_live_items_show_display_logos(client):

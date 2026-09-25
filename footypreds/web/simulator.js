@@ -237,10 +237,63 @@ async function prepareRecent(scope) {
     if (!scope.alive) return;
     $('#recent-status').innerHTML = recentStatusView(status);
     hydrate($('#recent-status'));
-    pollRecent(scope);
+    await pollRecent(scope);
   } catch (error) {
     toast(error.message, 'error');
   }
+}
+
+// Before a "recent" run: load the missing days first, so they are not silently ticket-less.
+// Resolves false only when the page was left.
+async function ensureRecentPrepared(scope) {
+  let status;
+  try {
+    status = await api(`/api/simulate/recent/status?days=${simState.days}&sports=${simState.sports.join(',')}`);
+  } catch {
+    return scope.alive; // the run itself reports what is missing
+  }
+  if (!scope.alive) return false;
+  if (status.status === 'running') return waitRecent(scope);
+  if (!isNum(status.planned) || status.planned === 0) return true;
+  const load = await confirmDialog({
+    title: 'Încarc întâi zilele lipsă?',
+    text: `Pentru ${plural(simState.days, 'zi', 'zile')} lipsesc date în baza locală: ${plural(status.planned, 'cerere', 'cereri')} FlashScore (zilele deja salvate sunt sărite). Fără ele, acele zile rămân fără bilet.`,
+    ok: 'Încarcă și rulează',
+    cancel: 'Rulează fără ele',
+  });
+  if (!scope.alive) return false;
+  if (!load) return true;
+  try {
+    const started = await post('/api/simulate/recent/prepare', {days: simState.days, sports: simState.sports});
+    if (!scope.alive) return false;
+    $('#recent-status').innerHTML = recentStatusView(started);
+    hydrate($('#recent-status'));
+    return waitRecent(scope);
+  } catch (error) {
+    toast(error.message, 'error');
+  }
+  return scope.alive;
+}
+
+// Waits for the background load to finish (independent of the Prepare button's own poller).
+async function waitRecent(scope) {
+  const url = `/api/simulate/recent/status?days=${simState.days}&sports=${simState.sports.join(',')}`;
+  try {
+    while (scope.alive) {
+      const status = await api(url);
+      if (!scope.alive) return false;
+      $('#recent-status').innerHTML = recentStatusView(status);
+      hydrate($('#recent-status'));
+      if (status.status !== 'running') {
+        if (status.status === 'failed') toast(status.message || 'Încărcarea zilelor a eșuat.', 'error');
+        return true;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  } catch (error) {
+    if (scope.alive) toast(error.message, 'error');
+  }
+  return scope.alive;
 }
 
 async function pollRecent(scope) {
@@ -320,6 +373,7 @@ async function runSimulation(scope) {
   const out = $('#sim-output');
   const button = $('#sim-run');
   button.disabled = true;
+  if (body.dataset === 'recent' && !(await ensureRecentPrepared(scope))) return;
   out.innerHTML = `<div class="card">${loadingBlock('Se simulează zi cu zi… Prima rulare pe un set de date calculează predicțiile.')}</div>`;
   try {
     const result = await post('/api/simulate', body);

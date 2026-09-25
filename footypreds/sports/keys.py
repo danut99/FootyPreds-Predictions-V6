@@ -131,3 +131,56 @@ def label(sport, key):
         return f"{prefix} {groups[1]}-{groups[2]}"
     word = "Peste" if groups[0] == "over" else "Sub"
     return f"{word} {groups[1]} game-uri"
+
+
+# --- bookmaker margin of one market ---------------------------------------------------------
+
+# Overrounds outside this band are not a usable reference (broken or one-sided books).
+MARGIN_RANGE = (1.0, 1.3)
+_LEGACY = {legacy: generic for generic, legacy in FOOTBALL_ALIASES.items()}
+
+
+def complements(sport, key):
+    """All outcomes of the market `key` belongs to (they add up to one bet), or None."""
+    key = _LEGACY.get(key, key)
+    if key in ("btts", "no_btts"):
+        return ("btts", "no_btts")
+    parsed = parse(key)
+    if parsed is None:
+        return None
+    family, groups = parsed
+    if family == "result":
+        return ("1", "X", "2") if sport == "football" else ("1", "2")
+    if family == "total":
+        return (over(groups[1]), under(groups[1]))
+    if family == "team_total":
+        side, _, line = groups
+        return (f"{side}_over_{fmt_line(line)}", f"{side}_under_{fmt_line(line)}")
+    if family == "handicap":
+        side, line = groups
+        other = "2" if side == "1" else "1"
+        return (handicap(side, float(line)), handicap(other, -float(line)))
+    if family == "parity":
+        return ("odd", "even")
+    if family == "dnb":
+        return ("dnb_1", "dnb_2")
+    return None
+
+
+def market_margin(sport, key, prices):
+    """Overround (sum of 1/price) of the fully priced market of `key`, else None.
+
+    `prices` maps market keys to decimal odds (Match.odds); football legacy spellings such
+    as over25 are accepted for their generic keys and vice versa.
+    """
+    group = complements(sport, key)
+    if not group:
+        return None
+    values = []
+    for name in group:
+        price = prices.get(name) or prices.get(FOOTBALL_ALIASES.get(name, ""))
+        if not price or price <= 1:
+            return None
+        values.append(price)
+    margin = sum(1 / price for price in values)
+    return margin if MARGIN_RANGE[0] <= margin <= MARGIN_RANGE[1] else None

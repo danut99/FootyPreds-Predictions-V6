@@ -91,12 +91,14 @@ def basketball_fixture():
         home="Home",
         away="Away",
         sport="basketball",
+        # A priced winner market: fair value = p x odds x its overround (1/1.5 + 1/2.6 ~ 1.051).
+        odds={"1": 1.5, "2": 2.6},
     )
 
 
 def test_recommendations_skip_basketball_whole_lines_without_a_push_flag():
     markets = [
-        market("1", 0.7, 1.5),
+        market("1", 0.66, 1.5),  # fair value 0.66 x 1.5 x 1.051 ~ 1.04
         market("over_185", 0.6, 1.7),  # whole line: can push, basketball sets no "push" key
         market("over_185.5", 0.58, 1.75),
     ]
@@ -110,6 +112,7 @@ def test_simulator_skips_refundable_markets_like_the_recommendations():
         row(
             "m1",
             [("dnb_1", 0.9, 1.2), ("ah_1_-1", 0.8, 1.3), ("over_185", 0.8, 1.3), ("1", 0.55, 1.85)],
+            margin=1.0,
         )
     ]
     assert [leg["key"] for leg in sim.model_legs(rows[0], rules)] == ["1"]

@@ -376,9 +376,13 @@ def test_eligible_legs_skip_strong_disagreements_with_the_market():
     analysis = analyze_match(match, []) | {"grade": "B", "quality": "sufficient"}
     capped = rc.eligible_legs(match, analysis, NOW)
     uncapped = rc.eligible_legs(match, analysis, NOW, max_value=None)
-    assert rc.MAX_VALUE == 1.05
-    assert all(rc.MIN_VALUE <= x["probability"] * x["odds"] <= rc.MAX_VALUE for x in capped)
-    removed = [x for x in uncapped if x["probability"] * x["odds"] > rc.MAX_VALUE]
+
+    def value(x):
+        return rc.fair_value(x["probability"], x["odds"], x["margin"])
+
+    assert rc.MAX_VALUE == 1.10
+    assert all(rc.MIN_VALUE <= value(x) <= rc.MAX_VALUE for x in capped)
+    removed = [x for x in uncapped if value(x) > rc.MAX_VALUE]
     assert [x["key"] for x in capped] == [x["key"] for x in uncapped if x not in removed]
 
 

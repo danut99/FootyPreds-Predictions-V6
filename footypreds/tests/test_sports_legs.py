@@ -44,7 +44,12 @@ def test_candidate_legs_need_a_price_a_grade_and_a_future_kickoff():
     assert first["odds"] == 1.5 and first["sport"] == "basketball"
     assert first["competition_id"] == "basketball:usa|nba" and first["status"] == "pending"
     assert first["ev"] == pytest.approx(first["probability"] * 1.5 - 1)
-    assert candidate_legs(match, analysis | {"grade": "D"}, NOW) == []
+    # Grade D: only fully priced markets, each carrying its bookmaker overround.
+    grade_d = candidate_legs(match, analysis | {"grade": "D"}, NOW)
+    assert {leg["key"] for leg in grade_d} == {"1", "2", "over_180.5", "under_180.5"}
+    assert all(leg["margin"] > 1 for leg in grade_d)
+    unpriced = match.model_copy(update={"odds": {"1": 1.5}})
+    assert candidate_legs(unpriced, analysis | {"grade": "D"}, NOW) == []
     assert candidate_legs(match, analysis, match.kickoff) == []
     live = match.model_copy(update={"status": "live"})
     assert candidate_legs(live, analysis, NOW) == []

@@ -190,7 +190,8 @@ def client(app):
 def assert_leg(leg):
     assert leg["sport"] in ("football", "basketball", "tennis")
     assert leg["odds"] > 1 and 0 < leg["probability"] < 1
-    assert leg["grade"] in ("A", "B", "C")
+    # Grade D only on a fully priced market (probability anchored to the fair price).
+    assert leg["grade"] in ("A", "B", "C") or leg["margin"] is not None
     assert is_settleable(leg["sport"], leg["key"]) and not can_push(leg["sport"], leg["key"])
     assert recommend.LEG_ODDS[0] <= leg["odds"] <= recommend.LEG_ODDS[1]
     assert datetime.fromisoformat(leg["kickoff"]) > NOW

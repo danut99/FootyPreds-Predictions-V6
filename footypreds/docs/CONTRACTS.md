@@ -486,10 +486,15 @@ optimizer chooses the likeliest legs for the requested odds.
   it). A target not stored yet is added using the budget left. On `refresh`, a ticket with any
   started or settled leg is **locked** (kept as is), so the track record cannot be rewritten.
 - Leg eligibility (`recommend.eligible_legs`): `candidate_legs` (scheduled, kickoff after now,
-  grade A–C, selectable, real price) and then `recommend.leg_allowed`: no push probability and
-  `can_push` False, odds in `LEG_ODDS` 1.08–4.0 and `MIN_VALUE` 0.95 ≤ `probability × odds` ≤
-  `MAX_VALUE` 1.05 (a prudent heuristic cap, docs/MODEL.md). The simulator calls the same
-  predicate (`simulator.model_legs`), except its `value` mode, which has no cap.
+  selectable, real price; grade A–C, or grade D only when every outcome of the leg's market is
+  priced) and then `recommend.leg_allowed`: no push probability and `can_push` False, odds in
+  `LEG_ODDS` 1.08–4.0 and `MIN_VALUE` 0.97 ≤ fair value ≤ `MAX_VALUE` 1.10, where
+  fair value = `probability × odds × margin` (`recommend.fair_value`; margin = overround of the
+  leg's market from `sports.keys.market_margin`, `DEFAULT_MARGIN` 1.06 when not fully priced;
+  1.0 = the model agrees with the bookmaker's margin-free price). Each leg carries `margin`.
+  The cap is a prudent heuristic (docs/MODEL.md). The simulator calls the same predicate
+  (`simulator.model_legs`, rows store each market's `margin`), except its `value` mode, which
+  has no cap.
 - Ticket (`recommend.optimize`, exact branch and bound): maximizes the product of leg
   probabilities with `total_odds` in `ODDS_WINDOW` [0.93, 1.12] × target, at most one leg per
   match and never the same team twice, at most `MAX_LEGS` legs (2 → 3, 5 → 5, 10 → 7,
@@ -708,8 +713,9 @@ Dataset ids, always listed in this order (`sim_datasets.DATASET_IDS`):
 - Modes: `singles` (the K safest legs of the day, one per match, odds ≥ 1.2), `ticket` (one
   daily ticket near `target_odds`, same optimizer and window as the recommendations) and
   `value` (singles with EV ≥ 0.02 and probability ≥ 0.35). Legs follow the recommendation rules
-  (`rules.source == "recommend"`, `recommend.leg_allowed`): grade A–C, odds 1.08–4.0,
-  0.95 ≤ `probability × odds` ≤ 1.05 (no upper cap in `value` mode), `can_push` False.
+  (`rules.source == "recommend"`, `recommend.leg_allowed`): grade A–C (D on fully priced
+  markets), odds 1.08–4.0, 0.97 ≤ fair value ≤ 1.10 (no upper cap in `value` mode),
+  `can_push` False.
 - **Blind rule:** walk-forward by day. For day D, the model sees only results of days before
   D (and the analyzers' own kickoff − 3h cutoff). The fixture it receives is rebuilt from
   pre-match fields (teams, kickoff, competition, prices): no score, status, finish type or live
@@ -749,7 +755,7 @@ Dataset ids, always listed in this order (`sim_datasets.DATASET_IDS`):
               "growth": -0.057, "betting_days": 20, "stopped": null, "staking": "flat",
               "rows_total": 20},
  "method": "Walk-forward orb: pentru fiecare zi, modelul vede doar rezultatele din zilele anterioare; …",
- "rules": {"source": "recommend", "leg_odds": [1.08, 4.0], "min_value": 0.95, "max_value": 1.05,
+ "rules": {"source": "recommend", "leg_odds": [1.08, 4.0], "min_value": 0.97, "max_value": 1.1,
            "single_min_odds": 1.2, "window": [0.93, 1.12], "max_legs": 3},
  "warnings": ["Cotele istorice sunt medii de piață; la o casă reală prețul obținut putea fi altul.", …],
  "warning": "…the warnings joined in one sentence…",

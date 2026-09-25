@@ -279,7 +279,9 @@ def test_simulation_is_deterministic(dataset, tmp_path):
 # --- strategies ---------------------------------------------------------------------------
 
 
-def row(match_id, markets, grade="B", odds=None, sport="football"):
+def row(match_id, markets, grade="B", odds=None, sport="football", margin=1.0):
+    """Synthetic prediction row; `margin` is each market's overround (1.0 = fair prices, so
+    the fair value equals probability x odds; None = market not fully priced)."""
     return {
         "id": match_id,
         "day": "2025-01-01",
@@ -292,7 +294,15 @@ def row(match_id, markets, grade="B", odds=None, sport="football"):
         "confidence": 60,
         "odds": odds or {"1": 1.5, "X": 4.0, "2": 6.0},
         "markets": [
-            {"key": k, "label": k, "group": "g", "probability": p, "fair_odds": 1 / p, "odds": o}
+            {
+                "key": k,
+                "label": k,
+                "group": "g",
+                "probability": p,
+                "fair_odds": 1 / p,
+                "odds": o,
+                "margin": margin,
+            }
             for k, p, o in markets
         ],
     }
@@ -305,9 +315,9 @@ def test_singles_pick_the_safest_leg_per_match_and_skip_grade_d():
     rows = [
         row("a", [("1", 0.70, 1.5), ("over25", 0.72, 1.4)]),
         row("b", [("1", 0.80, 1.3)]),
-        row("c", [("1", 0.95, 1.25)], grade="D"),
+        row("c", [("1", 0.76, 1.3)], grade="D", margin=None),  # D, market not fully priced
         row("d", [("2", 0.90, 1.05)]),  # below the odds band
-        row("e", [("X", 0.50, 1.5)]),  # clearly negative value: 0.75 < 0.95
+        row("e", [("X", 0.50, 1.5)]),  # clearly negative value: 0.75 < MIN_VALUE
     ]
     bets = sim.choose_singles(rows, 5, RULES)
     assert [(b["legs"][0]["match_id"], b["legs"][0]["key"]) for b in bets] == [

@@ -235,9 +235,12 @@ def test_eligible_legs_filter_band_value_grade_and_kickoff():
     assert "ah_1_-20.5" not in keys  # 9.0 is outside the leg odds band
     for item in legs:
         assert rc.LEG_ODDS[0] <= item["odds"] <= rc.LEG_ODDS[1]
-        assert item["probability"] * item["odds"] >= rc.MIN_VALUE
+        assert rc.fair_value(item["probability"], item["odds"], item["margin"]) >= rc.MIN_VALUE
         assert item["reason"] and "Probabilitate estimată" in item["reason"]
-    assert rc.eligible_legs(match, analysis | {"grade": "D"}, NOW) == []
+    # Grade D keeps only fully priced markets (1/2 and the 180.5 total are, the handicap is not).
+    grade_d = rc.eligible_legs(match, analysis | {"grade": "D"}, NOW)
+    assert all(item["margin"] is not None for item in grade_d)
+    assert {item["key"] for item in grade_d} <= {"1", "2", "over_180.5", "under_180.5"}
     assert rc.eligible_legs(match, analysis, match.kickoff) == []
     started = match.model_copy(update={"status": "live"})
     assert rc.eligible_legs(started, analysis, NOW) == []

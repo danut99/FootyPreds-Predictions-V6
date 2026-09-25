@@ -38,9 +38,10 @@ from footypreds.config import DATA, PACKAGE
 from footypreds.domain import Match
 from footypreds.engine import PARAMS, HistoryIndex, analyze, fit_history
 from footypreds.sports import analyze_match
+from footypreds.sports.keys import market_margin
 from footypreds.sports.settle import can_push, is_settleable, settle
 
-PREDICTION_VERSION = "sim-2"
+PREDICTION_VERSION = "sim-3"
 CACHE_DIR = DATA / "sim_cache"
 THRESHOLD = 0.85
 GRADES_OK = ("A", "B", "C")
@@ -130,6 +131,8 @@ def prediction_row(match, analysis):
                 "odds": price,
                 # Probability of a refund (football whole lines): such legs are never bet.
                 "push": market.get("push", 0.0),
+                # Overround of this market when all its outcomes are priced (else None).
+                "margin": market_margin(match.sport, market["key"], match.odds),
             }
         )
     return {
@@ -406,7 +409,7 @@ def product_rules():
     )
 
 
-def leg_allowed(sport, key, probability, odds, rules, push=False):
+def leg_allowed(sport, key, probability, odds, rules, push=False, margin=None):
     """recommend.leg_allowed (the app's own leg rule) with these rules' bounds."""
     try:
         from footypreds.recommend import leg_allowed as allowed
@@ -422,8 +425,9 @@ def leg_allowed(sport, key, probability, odds, rules, push=False):
             leg_odds=rules.leg_odds,
             min_value=rules.min_value,
             max_value=rules.max_value,
+            margin=margin,
         )
-    value = probability * odds
+    value = probability * odds * (margin or 1.06)
     return (
         not push
         and not can_push(sport, key)
@@ -435,20 +439,22 @@ def leg_allowed(sport, key, probability, odds, rules, push=False):
 
 
 def model_legs(row, rules):
-    """Bettable legs of one fixture: grade A-C, selectable, real price, and the SAME leg rule as
-    the recommendations (odds band, MIN_VALUE <= probability x odds <= MAX_VALUE, no refunds)."""
-    if row["grade"] not in GRADES_OK:
-        return []
+    """Bettable legs of one fixture with the SAME rules as the recommendations: selectable,
+    real price, grade A-C (grade D only on fully priced markets, see sports.legs.candidate_legs),
+    odds band, MIN_VALUE <= fair value <= MAX_VALUE, no refunds."""
+    grade_ok = row["grade"] in GRADES_OK
     return [
         leg_of(row, market)
         for market in row["markets"]
-        if leg_allowed(
+        if (grade_ok or market.get("margin") is not None)
+        and leg_allowed(
             row["sport"],
             market["key"],
             market["probability"],
             market["odds"],
             rules,
             push=(market.get("push") or 0) > 1e-12,
+            margin=market.get("margin"),
         )
     ]
 

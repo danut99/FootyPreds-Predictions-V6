@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 from footypreds.competitions import competition_name, match_competition
 from footypreds.media import match_media
+from footypreds.sports.keys import market_margin
 from footypreds.sports.settle import settle
 
 LEG_STATUSES = ("pending", "won", "lost", "void")
@@ -42,18 +43,25 @@ def leg(match, analysis, market):
 
 
 def candidate_legs(match, analysis, now=None):
-    """Bettable legs of one pre-match fixture: selectable markets with a real price, grade A-C.
+    """Bettable legs of one pre-match fixture: selectable markets with a real price.
 
-    Never a live, finished or started game (no result may be known when a leg is chosen).
+    Grade A-C: every priced market. Grade D (thin form data): only markets whose every outcome
+    is priced, because there the probability is anchored to the bookmakers' margin-free price
+    and the leg carries a known `margin`. Never a live, finished or started game (no result may
+    be known when a leg is chosen).
     """
     now = now or datetime.now(timezone.utc)
-    if match.status != "scheduled" or match.kickoff <= now or analysis["grade"] == "D":
+    if match.status != "scheduled" or match.kickoff <= now:
         return []
-    return [
-        leg(match, analysis, market)
-        for market in analysis["markets"]
-        if market["selectable"] and market["odds"] is not None and market["odds"] > 1
-    ]
+    output = []
+    for market in analysis["markets"]:
+        if not (market["selectable"] and market["odds"] is not None and market["odds"] > 1):
+            continue
+        margin = market_margin(match.sport, market["key"], match.odds)
+        if analysis["grade"] == "D" and margin is None:
+            continue
+        output.append(leg(match, analysis, market) | {"margin": margin})
+    return output
 
 
 def ticket(legs, target_odds=None, day=None, reason=None):

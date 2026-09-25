@@ -9,7 +9,8 @@ Pipeline for one day (docs/CONTRACTS.md §10.2):
 1. `collect`: the day's fixtures of every requested sport (app.state.day_fixtures), the most
    promising ones enriched within a strict budget (app.state.enrich: H2H, standings and every
    quoted market price), then every upcoming priced fixture analysed (app.state.cache).
-2. `eligible_legs`: shared candidate legs (sports.legs.candidate_legs: pre-match, grade A-C,
+2. `eligible_legs`: shared candidate legs (sports.legs.candidate_legs: pre-match, grade A-C or
+   grade D on fully priced markets,
    selectable, real price) inside the odds band, without clearly negative value, without
    refundable (push) lines, and without legs where the model claims far more than the price
    (p * odds > MAX_VALUE: a strong disagreement with the market that validation never backed).
@@ -45,17 +46,25 @@ ODDS_WINDOW = (0.93, 1.12)
 # Leg prices considered at all: very short prices add risk without adding odds, long prices
 # are lotteries.
 LEG_ODDS = (1.08, 4.0)
-# Legs whose estimated value p * odds is below this are clearly bad bets and are skipped.
-MIN_VALUE = 0.95
+# Leg value is measured against the bookmaker's FAIR price: fair value = p * odds * margin,
+# where margin is the overround of that leg's market (sum of 1/price over its outcomes, e.g.
+# 1/X/2 or over/under 2.5). A model that simply agrees with the market scores 1.0 whatever the
+# bookmaker margin is (FlashScore list prices carry ~9-10% on 1X2, football-data averages
+# ~5.5%). Legs whose market is not fully priced use DEFAULT_MARGIN.
+DEFAULT_MARGIN = 1.06
+# Legs the model rates clearly worse than the fair market price are skipped. (The old raw rule
+# p * odds >= 0.95 rejected every leg where the model agreed with a 10%-margin book, which left
+# the recent-days simulator and many days' recommendations without any ticket.)
+MIN_VALUE = 0.97
 # ... and legs above this are skipped too: the model then disagrees with the price by more than
 # the bookmaker margin, with no measured evidence that it is right. On the 2024-25 validation
-# season (16 leagues, the model's own over/under 2.5 view) legs with p * odds in 0.95-1.05
-# returned -4.6%, all legs above 1.05 -9.0%; no market has shown an edge, so no exception.
-# A conservative heuristic, not a fitted optimum: it is the best of 7 candidate caps on those
-# legs, but the gaps between caps are about one standard error of the ROI (~1.6 pp), and it was
-# measured only on football over/under 2.5 (`python -m footypreds.evaluation.tune --totals`,
-# docs/MODEL.md). Other markets and sports inherit it without their own measurement.
-MAX_VALUE = 1.05
+# season (16 leagues, the model's own over/under 2.5 view, football-data margin ~1.055) legs
+# with raw p * odds in 0.95-1.05 returned -4.6%, all legs above 1.05 -9.0%; raw 1.05 there is a
+# fair value of ~1.10. A conservative heuristic, not a fitted optimum: the gaps between the
+# candidate caps were about one standard error of the ROI (~1.6 pp), measured only on football
+# over/under 2.5 (`python -m footypreds.evaluation.tune --totals`, docs/MODEL.md). Other markets
+# and sports inherit it without their own measurement.
+MAX_VALUE = 1.10
 # Safest single picks need a price worth staking.
 SINGLE_MIN_ODDS = 1.2
 SINGLES = 10
@@ -369,10 +378,16 @@ def eligible_legs(
             leg_odds=leg_odds,
             min_value=min_value,
             max_value=max_value,
+            margin=item.get("margin"),
         )
         if allowed:
             output.append(item | {"reason": leg_reason(analysis, item)})
     return output
+
+
+def fair_value(probability, odds, margin=None):
+    """probability x odds against the margin-free price of the leg's market (1.0 = agrees)."""
+    return probability * odds * (margin or DEFAULT_MARGIN)
 
 
 def leg_allowed(
@@ -385,12 +400,14 @@ def leg_allowed(
     leg_odds=LEG_ODDS,
     min_value=MIN_VALUE,
     max_value=MAX_VALUE,
+    margin=None,
 ):
     """The one leg rule shared by recommendations, the generator, plans and the simulator.
 
     A leg is kept when it cannot be refunded (no push probability, no whole line / DNB), its
-    real price is inside the odds band and MIN_VALUE <= probability x odds <= MAX_VALUE (either
-    bound None = off).
+    real price is inside the odds band and MIN_VALUE <= fair value <= MAX_VALUE (either bound
+    None = off), where fair value = probability x odds x margin (the overround of the leg's
+    market; DEFAULT_MARGIN when it is not fully priced).
     """
     if push or can_push(sport, key):
         return False
@@ -398,7 +415,7 @@ def leg_allowed(
         return False
     if not leg_odds[0] <= odds <= leg_odds[1]:
         return False
-    value = probability * odds
+    value = fair_value(probability, odds, margin)
     if min_value is not None and value < min_value:
         return False
     return max_value is None or value <= max_value

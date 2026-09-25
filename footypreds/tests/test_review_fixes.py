@@ -80,7 +80,7 @@ def test_simulation_rules_expose_the_value_window():
     rules = sim.product_rules()
     assert (rules.min_value, rules.max_value) == (recommend.MIN_VALUE, recommend.MAX_VALUE)
     text = sim.method_text("ticket", "flat", rules)
-    assert "între 0.95 și 1.05" in text
+    assert f"între {recommend.MIN_VALUE:g} și {recommend.MAX_VALUE:g}" in text
     assert "∞" in sim.method_text("value", "flat", rules)
 
 
