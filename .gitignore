@@ -4,10 +4,8 @@ __pycache__/
 .ruff_cache/
 *.py[cod]
 .env
-data/*
-!data/.gitkeep
-legacy/local/
-legacy/*.rar
-legacy/*.xlsm
 *.log
-artifacts/
+footypreds/data/*
+!footypreds/data/.gitkeep
+footypreds/artifacts/
+footypreds/excel_client/*.xlsm

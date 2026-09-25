@@ -1,5 +1,5 @@
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["footypreds/tests"]
 pythonpath = ["."]
 
 [tool.ruff]

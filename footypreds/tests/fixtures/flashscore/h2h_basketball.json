@@ -1,0 +1,1602 @@
+[
+ {
+  "match_id": "8xXArSOO",
+  "timestamp": 1790249400,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Adelaide",
+   "image_path": "https://static.flashscore.com/res/image/data/CYeDQAil-lWYHuoGA.png"
+  },
+  "scores": {
+   "home": "98",
+   "away": "97"
+  }
+ },
+ {
+  "match_id": "l46dqE0b",
+  "timestamp": 1790069400,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Brisbane Bullets",
+   "image_path": "https://static.flashscore.com/res/image/data/fFs1TVYA-860zcpZK.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "88",
+   "away": "85"
+  }
+ },
+ {
+  "match_id": "2m8lozWo",
+  "timestamp": 1789880400,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Illawarra Hawks",
+   "image_path": "https://static.flashscore.com/res/image/data/SlfvhndM-0MCD04wA.png"
+  },
+  "scores": {
+   "home": "95",
+   "away": "81"
+  }
+ },
+ {
+  "match_id": "CEZVVluJ",
+  "timestamp": 1789817400,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "South East Melbourne",
+   "image_path": "https://static.flashscore.com/res/image/data/zwIfYWFG-IFE8pFJI.png"
+  },
+  "scores": {
+   "home": "79",
+   "away": "100"
+  }
+ },
+ {
+  "match_id": "lrXsh4fA",
+  "timestamp": 1789036500,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "Club Friendly",
+  "tournament_name_short": "CF",
+  "home_team": {
+   "name": "Ryukyu",
+   "image_path": "https://static.flashscore.com/res/image/data/CUCNycdM-lWEyjm0F.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "82",
+   "away": "110"
+  }
+ },
+ {
+  "match_id": "WAAuV9Ca",
+  "timestamp": 1788863700,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "Club Friendly",
+  "tournament_name_short": "CF",
+  "home_team": {
+   "name": "Chiba",
+   "image_path": "https://static.flashscore.com/res/image/data/x8aJPrZg-bD0CpXMq.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "45",
+   "away": "98"
+  }
+ },
+ {
+  "match_id": "bcCXWVsm",
+  "timestamp": 1788859800,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "Club Friendly",
+  "tournament_name_short": "CF",
+  "home_team": {
+   "name": "South East Melbourne",
+   "image_path": "https://static.flashscore.com/res/image/data/zwIfYWFG-IFE8pFJI.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "100",
+   "away": "103"
+  }
+ },
+ {
+  "match_id": "0AIMFOGi",
+  "timestamp": 1788678000,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "Club Friendly",
+  "tournament_name_short": "CF",
+  "home_team": {
+   "name": "Tasmania JackJumpers",
+   "image_path": "https://static.flashscore.com/res/image/data/fajTj3h5-EHxXqm9L.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "86",
+   "away": "96"
+  }
+ },
+ {
+  "match_id": "vXuMX23B",
+  "timestamp": 1788507000,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "Club Friendly",
+  "tournament_name_short": "CF",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Sydney",
+   "image_path": "https://static.flashscore.com/res/image/data/rRiJRJAr-UJXdVtIC.png"
+  },
+  "scores": {
+   "home": "74",
+   "away": "95"
+  }
+ },
+ {
+  "match_id": "zwlogWyh",
+  "timestamp": 1788334200,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "Club Friendly",
+  "tournament_name_short": "CF",
+  "home_team": {
+   "name": "Cairns Taipans",
+   "image_path": "https://static.flashscore.com/res/image/data/nZ2CUQXg-ILm2ehp1.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "85",
+   "away": "82"
+  }
+ },
+ {
+  "match_id": "pUOOOPJc",
+  "timestamp": 1773478800,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Sydney",
+   "image_path": "https://static.flashscore.com/res/image/data/rRiJRJAr-UJXdVtIC.png"
+  },
+  "scores": {
+   "home": "75",
+   "away": "89"
+  }
+ },
+ {
+  "match_id": "jD0rhjqf",
+  "timestamp": 1773217800,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Sydney",
+   "image_path": "https://static.flashscore.com/res/image/data/rRiJRJAr-UJXdVtIC.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "105",
+   "away": "104"
+  }
+ },
+ {
+  "match_id": "KdzlhPDk",
+  "timestamp": 1772874000,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Melbourne United",
+   "image_path": "https://static.flashscore.com/res/image/data/KKaGREzB-tbuPR9vB.png"
+  },
+  "scores": {
+   "home": "95",
+   "away": "77"
+  }
+ },
+ {
+  "match_id": "8E6Pu09L",
+  "timestamp": 1772613000,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "South East Melbourne",
+   "image_path": "https://static.flashscore.com/res/image/data/zwIfYWFG-IFE8pFJI.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "111",
+   "away": "94"
+  }
+ },
+ {
+  "match_id": "lfcULSlU",
+  "timestamp": 1771738200,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Adelaide",
+   "image_path": "https://static.flashscore.com/res/image/data/CYeDQAil-lWYHuoGA.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "107",
+   "away": "111"
+  }
+ },
+ {
+  "match_id": "jylImETr",
+  "timestamp": 1771583400,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Adelaide",
+   "image_path": "https://static.flashscore.com/res/image/data/CYeDQAil-lWYHuoGA.png"
+  },
+  "scores": {
+   "home": "86",
+   "away": "74"
+  }
+ },
+ {
+  "match_id": "4ztsxcmK",
+  "timestamp": 1771482600,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Cairns Taipans",
+   "image_path": "https://static.flashscore.com/res/image/data/nZ2CUQXg-ILm2ehp1.png"
+  },
+  "scores": {
+   "home": "115",
+   "away": "84"
+  }
+ },
+ {
+  "match_id": "CpTrZEEk",
+  "timestamp": 1771133400,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Sydney",
+   "image_path": "https://static.flashscore.com/res/image/data/rRiJRJAr-UJXdVtIC.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "102",
+   "away": "84"
+  }
+ },
+ {
+  "match_id": "CtgeEgeD",
+  "timestamp": 1771050600,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Adelaide",
+   "image_path": "https://static.flashscore.com/res/image/data/CYeDQAil-lWYHuoGA.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "92",
+   "away": "89"
+  }
+ },
+ {
+  "match_id": "pUaerJi3",
+  "timestamp": 1770978600,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Brisbane Bullets",
+   "image_path": "https://static.flashscore.com/res/image/data/fFs1TVYA-860zcpZK.png"
+  },
+  "scores": {
+   "home": "94",
+   "away": "75"
+  }
+ },
+ {
+  "match_id": "GEanGFQ0",
+  "timestamp": 1770445800,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Illawarra Hawks",
+   "image_path": "https://static.flashscore.com/res/image/data/SlfvhndM-0MCD04wA.png"
+  },
+  "scores": {
+   "home": "106",
+   "away": "95"
+  }
+ },
+ {
+  "match_id": "dfvS7xGj",
+  "timestamp": 1770373800,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Cairns Taipans",
+   "image_path": "https://static.flashscore.com/res/image/data/nZ2CUQXg-ILm2ehp1.png"
+  },
+  "scores": {
+   "home": "98",
+   "away": "84"
+  }
+ },
+ {
+  "match_id": "rmnuIydl",
+  "timestamp": 1770273000,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "South East Melbourne",
+   "image_path": "https://static.flashscore.com/res/image/data/zwIfYWFG-IFE8pFJI.png"
+  },
+  "scores": {
+   "home": "83",
+   "away": "114"
+  }
+ },
+ {
+  "match_id": "ObZ6zpCF",
+  "timestamp": 1769916600,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Tasmania JackJumpers",
+   "image_path": "https://static.flashscore.com/res/image/data/fajTj3h5-EHxXqm9L.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "91",
+   "away": "89"
+  }
+ },
+ {
+  "match_id": "2D4xWl2t",
+  "timestamp": 1769850000,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Illawarra Hawks",
+   "image_path": "https://static.flashscore.com/res/image/data/SlfvhndM-0MCD04wA.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "99",
+   "away": "106"
+  }
+ },
+ {
+  "match_id": "GYVbx6s3",
+  "timestamp": 1769754600,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Melbourne United",
+   "image_path": "https://static.flashscore.com/res/image/data/KKaGREzB-tbuPR9vB.png"
+  },
+  "scores": {
+   "home": "97",
+   "away": "95"
+  }
+ },
+ {
+  "match_id": "lAv3Hkmm",
+  "timestamp": 1769596200,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "South East Melbourne",
+   "image_path": "https://static.flashscore.com/res/image/data/zwIfYWFG-IFE8pFJI.png"
+  },
+  "scores": {
+   "home": "101",
+   "away": "93"
+  }
+ },
+ {
+  "match_id": "44cw1U26",
+  "timestamp": 1769319000,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Melbourne United",
+   "image_path": "https://static.flashscore.com/res/image/data/KKaGREzB-tbuPR9vB.png"
+  },
+  "scores": {
+   "home": "73",
+   "away": "74"
+  }
+ },
+ {
+  "match_id": "0QmCE2kd",
+  "timestamp": 1769149800,
+  "status": "AFTER_EXTRA_TIME",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Adelaide",
+   "image_path": "https://static.flashscore.com/res/image/data/CYeDQAil-lWYHuoGA.png"
+  },
+  "scores": {
+   "home": "110",
+   "away": "112"
+  }
+ },
+ {
+  "match_id": "Opx4nVmD",
+  "timestamp": 1769077800,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Cairns Taipans",
+   "image_path": "https://static.flashscore.com/res/image/data/nZ2CUQXg-ILm2ehp1.png"
+  },
+  "scores": {
+   "home": "106",
+   "away": "69"
+  }
+ },
+ {
+  "match_id": "SCk4GOKq",
+  "timestamp": 1768984200,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "South East Melbourne",
+   "image_path": "https://static.flashscore.com/res/image/data/zwIfYWFG-IFE8pFJI.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "123",
+   "away": "116"
+  }
+ },
+ {
+  "match_id": "Ae9XLpcM",
+  "timestamp": 1768636800,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Cairns Taipans",
+   "image_path": "https://static.flashscore.com/res/image/data/nZ2CUQXg-ILm2ehp1.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "86",
+   "away": "104"
+  }
+ },
+ {
+  "match_id": "lC9Vkqw8",
+  "timestamp": 1768559400,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Illawarra Hawks",
+   "image_path": "https://static.flashscore.com/res/image/data/SlfvhndM-0MCD04wA.png"
+  },
+  "scores": {
+   "home": "92",
+   "away": "87"
+  }
+ },
+ {
+  "match_id": "2V5PN6S9",
+  "timestamp": 1768102200,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Illawarra Hawks",
+   "image_path": "https://static.flashscore.com/res/image/data/SlfvhndM-0MCD04wA.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "96",
+   "away": "101"
+  }
+ },
+ {
+  "match_id": "EXksCZgA",
+  "timestamp": 1768035600,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "South East Melbourne",
+   "image_path": "https://static.flashscore.com/res/image/data/zwIfYWFG-IFE8pFJI.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "97",
+   "away": "107"
+  }
+ },
+ {
+  "match_id": "tGHGPScc",
+  "timestamp": 1767940200,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Sydney",
+   "image_path": "https://static.flashscore.com/res/image/data/rRiJRJAr-UJXdVtIC.png"
+  },
+  "scores": {
+   "home": "62",
+   "away": "103"
+  }
+ },
+ {
+  "match_id": "E9PU1P5j",
+  "timestamp": 1767497400,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "91",
+   "away": "99"
+  }
+ },
+ {
+  "match_id": "QT2InJQb",
+  "timestamp": 1767256200,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Brisbane Bullets",
+   "image_path": "https://static.flashscore.com/res/image/data/fFs1TVYA-860zcpZK.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "75",
+   "away": "95"
+  }
+ },
+ {
+  "match_id": "6D7rztsg",
+  "timestamp": 1766892600,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Adelaide",
+   "image_path": "https://static.flashscore.com/res/image/data/CYeDQAil-lWYHuoGA.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "95",
+   "away": "84"
+  }
+ },
+ {
+  "match_id": "WlM57orT",
+  "timestamp": 1766737800,
+  "status": "AFTER_EXTRA_TIME",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Tasmania JackJumpers",
+   "image_path": "https://static.flashscore.com/res/image/data/fajTj3h5-EHxXqm9L.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "80",
+   "away": "81"
+  }
+ },
+ {
+  "match_id": "byOc97DG",
+  "timestamp": 1766392200,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Brisbane Bullets",
+   "image_path": "https://static.flashscore.com/res/image/data/fFs1TVYA-860zcpZK.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "99",
+   "away": "85"
+  }
+ },
+ {
+  "match_id": "QeRSuBDE",
+  "timestamp": 1766287800,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Tasmania JackJumpers",
+   "image_path": "https://static.flashscore.com/res/image/data/fajTj3h5-EHxXqm9L.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "85",
+   "away": "94"
+  }
+ },
+ {
+  "match_id": "29UlBTr4",
+  "timestamp": 1766133000,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Cairns Taipans",
+   "image_path": "https://static.flashscore.com/res/image/data/nZ2CUQXg-ILm2ehp1.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "99",
+   "away": "95"
+  }
+ },
+ {
+  "match_id": "jJnQLkMr",
+  "timestamp": 1766053800,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "South East Melbourne",
+   "image_path": "https://static.flashscore.com/res/image/data/zwIfYWFG-IFE8pFJI.png"
+  },
+  "scores": {
+   "home": "76",
+   "away": "77"
+  }
+ },
+ {
+  "match_id": "rDPb5Uy2",
+  "timestamp": 1765690200,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Brisbane Bullets",
+   "image_path": "https://static.flashscore.com/res/image/data/fFs1TVYA-860zcpZK.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "62",
+   "away": "86"
+  }
+ },
+ {
+  "match_id": "fqRtDkEi",
+  "timestamp": 1765616400,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "South East Melbourne",
+   "image_path": "https://static.flashscore.com/res/image/data/zwIfYWFG-IFE8pFJI.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "92",
+   "away": "80"
+  }
+ },
+ {
+  "match_id": "b7SCEYEF",
+  "timestamp": 1765535400,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Sydney",
+   "image_path": "https://static.flashscore.com/res/image/data/rRiJRJAr-UJXdVtIC.png"
+  },
+  "scores": {
+   "home": "79",
+   "away": "108"
+  }
+ },
+ {
+  "match_id": "fDpo0ZaM",
+  "timestamp": 1765085400,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Adelaide",
+   "image_path": "https://static.flashscore.com/res/image/data/CYeDQAil-lWYHuoGA.png"
+  },
+  "scores": {
+   "home": "94",
+   "away": "95"
+  }
+ },
+ {
+  "match_id": "CK1d5weo",
+  "timestamp": 1765002600,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Tasmania JackJumpers",
+   "image_path": "https://static.flashscore.com/res/image/data/fajTj3h5-EHxXqm9L.png"
+  },
+  "scores": {
+   "home": "99",
+   "away": "86"
+  }
+ },
+ {
+  "match_id": "tAKBozoT",
+  "timestamp": 1764844200,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Melbourne United",
+   "image_path": "https://static.flashscore.com/res/image/data/KKaGREzB-tbuPR9vB.png"
+  },
+  "scores": {
+   "home": "96",
+   "away": "84"
+  }
+ },
+ {
+  "match_id": "dfdRAaXN",
+  "timestamp": 1764743400,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Sydney",
+   "image_path": "https://static.flashscore.com/res/image/data/rRiJRJAr-UJXdVtIC.png"
+  },
+  "scores": {
+   "home": "95",
+   "away": "90"
+  }
+ },
+ {
+  "match_id": "CUSfkIo4",
+  "timestamp": 1763875800,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Melbourne United",
+   "image_path": "https://static.flashscore.com/res/image/data/KKaGREzB-tbuPR9vB.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "98",
+   "away": "87"
+  }
+ },
+ {
+  "match_id": "0S2ICL2B",
+  "timestamp": 1763793000,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Cairns Taipans",
+   "image_path": "https://static.flashscore.com/res/image/data/nZ2CUQXg-ILm2ehp1.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "96",
+   "away": "102"
+  }
+ },
+ {
+  "match_id": "46KSoquC",
+  "timestamp": 1763721000,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Tasmania JackJumpers",
+   "image_path": "https://static.flashscore.com/res/image/data/fajTj3h5-EHxXqm9L.png"
+  },
+  "scores": {
+   "home": "101",
+   "away": "95"
+  }
+ },
+ {
+  "match_id": "SE4AEsYb",
+  "timestamp": 1763197200,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "88",
+   "away": "75"
+  }
+ },
+ {
+  "match_id": "WnB1G33n",
+  "timestamp": 1762936200,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Brisbane Bullets",
+   "image_path": "https://static.flashscore.com/res/image/data/fFs1TVYA-860zcpZK.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "84",
+   "away": "113"
+  }
+ },
+ {
+  "match_id": "2Xzhd0IU",
+  "timestamp": 1762666200,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Sydney",
+   "image_path": "https://static.flashscore.com/res/image/data/rRiJRJAr-UJXdVtIC.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "79",
+   "away": "72"
+  }
+ },
+ {
+  "match_id": "xGMLzbFD",
+  "timestamp": 1762659000,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Adelaide",
+   "image_path": "https://static.flashscore.com/res/image/data/CYeDQAil-lWYHuoGA.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "87",
+   "away": "94"
+  }
+ },
+ {
+  "match_id": "tInqbMmI",
+  "timestamp": 1762410600,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Adelaide",
+   "image_path": "https://static.flashscore.com/res/image/data/CYeDQAil-lWYHuoGA.png"
+  },
+  "scores": {
+   "home": "79",
+   "away": "83"
+  }
+ },
+ {
+  "match_id": "2LAiXO8L",
+  "timestamp": 1762054200,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "South East Melbourne",
+   "image_path": "https://static.flashscore.com/res/image/data/zwIfYWFG-IFE8pFJI.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "94",
+   "away": "89"
+  }
+ },
+ {
+  "match_id": "Yiqy0rJ5",
+  "timestamp": 1761899400,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Illawarra Hawks",
+   "image_path": "https://static.flashscore.com/res/image/data/SlfvhndM-0MCD04wA.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "60",
+   "away": "102"
+  }
+ },
+ {
+  "match_id": "noEGVBXG",
+  "timestamp": 1761726600,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Tasmania JackJumpers",
+   "image_path": "https://static.flashscore.com/res/image/data/fajTj3h5-EHxXqm9L.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "84",
+   "away": "95"
+  }
+ },
+ {
+  "match_id": "4QvDBjto",
+  "timestamp": 1761382800,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Illawarra Hawks",
+   "image_path": "https://static.flashscore.com/res/image/data/SlfvhndM-0MCD04wA.png"
+  },
+  "scores": {
+   "home": "84",
+   "away": "85"
+  }
+ },
+ {
+  "match_id": "xQkS14lg",
+  "timestamp": 1761201000,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Brisbane Bullets",
+   "image_path": "https://static.flashscore.com/res/image/data/fFs1TVYA-860zcpZK.png"
+  },
+  "scores": {
+   "home": "83",
+   "away": "84"
+  }
+ },
+ {
+  "match_id": "bkRPMGln",
+  "timestamp": 1761121800,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Cairns Taipans",
+   "image_path": "https://static.flashscore.com/res/image/data/nZ2CUQXg-ILm2ehp1.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "78",
+   "away": "110"
+  }
+ },
+ {
+  "match_id": "8QoG2D3U",
+  "timestamp": 1760851800,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Sydney",
+   "image_path": "https://static.flashscore.com/res/image/data/rRiJRJAr-UJXdVtIC.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "94",
+   "away": "72"
+  }
+ },
+ {
+  "match_id": "4CiK3QJt",
+  "timestamp": 1760844600,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Melbourne United",
+   "image_path": "https://static.flashscore.com/res/image/data/KKaGREzB-tbuPR9vB.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "104",
+   "away": "88"
+  }
+ },
+ {
+  "match_id": "hbo8d9CD",
+  "timestamp": 1760682600,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Tasmania JackJumpers",
+   "image_path": "https://static.flashscore.com/res/image/data/fajTj3h5-EHxXqm9L.png"
+  },
+  "scores": {
+   "home": "82",
+   "away": "65"
+  }
+ },
+ {
+  "match_id": "Y7XXkzKO",
+  "timestamp": 1760524200,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Brisbane Bullets",
+   "image_path": "https://static.flashscore.com/res/image/data/fFs1TVYA-860zcpZK.png"
+  },
+  "scores": {
+   "home": "93",
+   "away": "110"
+  }
+ },
+ {
+  "match_id": "pYs0bVs1",
+  "timestamp": 1760239800,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "South East Melbourne",
+   "image_path": "https://static.flashscore.com/res/image/data/zwIfYWFG-IFE8pFJI.png"
+  },
+  "scores": {
+   "home": "81",
+   "away": "87"
+  }
+ },
+ {
+  "match_id": "6XDjwczJ",
+  "timestamp": 1760085000,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Cairns Taipans",
+   "image_path": "https://static.flashscore.com/res/image/data/nZ2CUQXg-ILm2ehp1.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "77",
+   "away": "80"
+  }
+ },
+ {
+  "match_id": "OIgi0iDl",
+  "timestamp": 1759905000,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Illawarra Hawks",
+   "image_path": "https://static.flashscore.com/res/image/data/SlfvhndM-0MCD04wA.png"
+  },
+  "scores": {
+   "home": "117",
+   "away": "88"
+  }
+ },
+ {
+  "match_id": "hz3L5DkR",
+  "timestamp": 1759563000,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Sydney",
+   "image_path": "https://static.flashscore.com/res/image/data/rRiJRJAr-UJXdVtIC.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "97",
+   "away": "75"
+  }
+ },
+ {
+  "match_id": "jqnf19M8",
+  "timestamp": 1759404600,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Illawarra Hawks",
+   "image_path": "https://static.flashscore.com/res/image/data/SlfvhndM-0MCD04wA.png"
+  },
+  "scores": {
+   "home": "92",
+   "away": "84"
+  }
+ },
+ {
+  "match_id": "nNXK7ZKE",
+  "timestamp": 1758958200,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "scores": {
+   "home": "78",
+   "away": "89"
+  }
+ },
+ {
+  "match_id": "fTpZqWS7",
+  "timestamp": 1758429000,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Melbourne United",
+   "image_path": "https://static.flashscore.com/res/image/data/KKaGREzB-tbuPR9vB.png"
+  },
+  "away_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "scores": {
+   "home": "114",
+   "away": "82"
+  }
+ },
+ {
+  "match_id": "UHPOSlGq",
+  "timestamp": 1758362400,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Tasmania JackJumpers",
+   "image_path": "https://static.flashscore.com/res/image/data/fajTj3h5-EHxXqm9L.png"
+  },
+  "scores": {
+   "home": "72",
+   "away": "75"
+  }
+ },
+ {
+  "match_id": "b1iQohbe",
+  "timestamp": 1758267000,
+  "status": "FINISHED",
+  "winner": "away",
+  "tournament_name": "NBL",
+  "tournament_name_short": "NBL",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Brisbane Bullets",
+   "image_path": "https://static.flashscore.com/res/image/data/fFs1TVYA-860zcpZK.png"
+  },
+  "scores": {
+   "home": "95",
+   "away": "104"
+  }
+ },
+ {
+  "match_id": "4deLV6kA",
+  "timestamp": 1757676600,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "Club Friendly",
+  "tournament_name_short": "CF",
+  "home_team": {
+   "name": "Perth",
+   "image_path": "https://static.flashscore.com/res/image/data/Q1Fx8AcM-bqw7ByeG.png"
+  },
+  "away_team": {
+   "name": "Tokyo Sunrockers",
+   "image_path": "https://static.flashscore.com/res/image/data/rZXzRMeM-MueLkWG9.png"
+  },
+  "scores": {
+   "home": "86",
+   "away": "66"
+  }
+ },
+ {
+  "match_id": "p6eJOZSb",
+  "timestamp": 1756627200,
+  "status": "FINISHED",
+  "winner": "home",
+  "tournament_name": "Club Friendly",
+  "tournament_name_short": "CF",
+  "home_team": {
+   "name": "New Zealand Breakers",
+   "image_path": "https://static.flashscore.com/res/image/data/nRO6AIyB-jqNoNr7q.png"
+  },
+  "away_team": {
+   "name": "Cairns Taipans",
+   "image_path": "https://static.flashscore.com/res/image/data/nZ2CUQXg-ILm2ehp1.png"
+  },
+  "scores": {
+   "home": "94",
+   "away": "75"
+  }
+ }
+]

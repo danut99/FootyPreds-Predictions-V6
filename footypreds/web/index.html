@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#0c1a15">
+  <meta name="description" content="FootyPreds: predicții statistice pentru fotbal, baschet și tenis, bilete AI, live și simulator cu bani virtuali.">
+  <title>FootyPreds — predicții fotbal, baschet, tenis</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='11' fill='%23c6f36b'/%3E%3Ctext x='11' y='29' font-size='26' font-family='Arial' font-weight='bold' fill='%230c1a15'%3EF%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./app.css">
+  <script src="./core.js" defer></script>
+  <script src="./home.js" defer></script>
+  <script src="./board.js" defer></script>
+  <script src="./match.js" defer></script>
+  <script src="./live.js" defer></script>
+  <script src="./tickets.js" defer></script>
+  <script src="./simulator.js" defer></script>
+  <script src="./wallet.js" defer></script>
+  <script src="./record.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#app">Sari la conținut</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#/" aria-label="FootyPreds, pagina principală">
+        <span class="brand-mark" aria-hidden="true">F</span><span class="brand-name">FootyPreds</span>
+      </a>
+      <nav class="nav" aria-label="Navigare principală">
+        <a href="#/" data-route="home">Acasă</a>
+        <a href="#/meciuri" data-route="board">Meciuri</a>
+        <a href="#/live" data-route="live"><span class="live-dot" aria-hidden="true"></span>Live</a>
+        <a href="#/bilete" data-route="tickets">Bilete</a>
+        <a href="#/simulator" data-route="simulator">Simulator</a>
+        <a href="#/portofel" data-route="wallet">Portofel</a>
+        <a href="#/rezultate" data-route="record">Rezultate</a>
+        <a href="#/metoda" data-route="method">Metodă</a>
+      </nav>
+      <div class="sport-switch" role="group" aria-label="Alege sportul">
+        <button type="button" data-switch="all" aria-pressed="true">Toate</button>
+        <button type="button" data-switch="football" aria-pressed="false">Fotbal</button>
+        <button type="button" data-switch="basketball" aria-pressed="false">Baschet</button>
+        <button type="button" data-switch="tennis" aria-pressed="false">Tenis</button>
+      </div>
+      <span id="server-status" class="server-status" role="status" title="Starea serverului"><span class="dot" aria-hidden="true"></span><span class="status-text">Se conectează…</span></span>
+    </div>
+  </header>
+  <main id="app" class="page" tabindex="-1"></main>
+  <footer class="footer">
+    <div class="footer-inner">
+      <p><b>FootyPreds</b> · probabilități statistice din rezultate reale, formă, meciuri directe și cote.</p>
+      <p><span class="age">18+</span> Estimări statistice, nu garanții. Joacă responsabil; portofelul și simulatorul folosesc bani virtuali.</p>
+    </div>
+  </footer>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <dialog id="dialog" class="dialog" aria-label="Confirmare"></dialog>
+  <dialog id="drawer" class="drawer" aria-label="Detalii meci"></dialog>
+</body>
+</html>

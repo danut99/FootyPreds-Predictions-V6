@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "RapidAPI Hub - FlashScore": {
+      "command": "E:/Personal/money/danuti/FootyPreds-Predictions-V6/.venv/Scripts/python.exe",
+      "args": [
+        "-c",
+        "import sys; sys.path.insert(0, 'E:/Personal/money/danuti/FootyPreds-Predictions-V6'); from footypreds.mcp_bridge import main; raise SystemExit(main())"
+      ]
+    }
+  }
+}

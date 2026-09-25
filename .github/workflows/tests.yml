@@ -1,4 +1,4 @@
-name: V7 checks
+name: FootyPreds checks
 on: [push, pull_request]
 jobs:
   python:
@@ -8,7 +8,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: python -m pip install -r requirements-dev.txt
-      - run: python -m ruff check app tests scripts evaluation
-      - run: python -m ruff format --check app tests scripts evaluation
+      - run: python -m pip install -r requirements.txt pytest==8.1.1 ruff==0.15.7
+      - run: python -m ruff check footypreds
+      - run: python -m ruff format --check footypreds
       - run: python -m pytest -q

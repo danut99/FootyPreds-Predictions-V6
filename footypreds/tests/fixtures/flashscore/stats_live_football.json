@@ -1,0 +1,386 @@
+{
+ "match": [
+  {
+   "name": "Expected goals (xG)",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Ball possession",
+   "home_team": "29%",
+   "away_team": "71%"
+  },
+  {
+   "name": "Total shots",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Shots on target",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Big chances",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Corner kicks",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Passes",
+   "home_team": "71% (5/7)",
+   "away_team": "88% (15/17)"
+  },
+  {
+   "name": "Expected goals (xG)",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "xG on target (xGOT)",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Total shots",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Shots on target",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Shots off target",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Blocked shots",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Shots inside the box",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Shots outside the box",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Hit the woodwork",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Big chances",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Corner kicks",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Touches in opposition box",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Accurate through passes",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Offsides",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Free kicks",
+   "home_team": 0,
+   "away_team": 1
+  },
+  {
+   "name": "Passes",
+   "home_team": "71% (5/7)",
+   "away_team": "88% (15/17)"
+  },
+  {
+   "name": "Long passes",
+   "home_team": "0% (0/1)",
+   "away_team": "50% (1/2)"
+  },
+  {
+   "name": "Passes in final third",
+   "home_team": "0% (0/0)",
+   "away_team": "0% (0/1)"
+  },
+  {
+   "name": "Expected assists (xA)",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Throw ins",
+   "home_team": 2,
+   "away_team": 1
+  },
+  {
+   "name": "Fouls",
+   "home_team": 1,
+   "away_team": 0
+  },
+  {
+   "name": "Tackles",
+   "home_team": "0% (0/0)",
+   "away_team": "100% (1/1)"
+  },
+  {
+   "name": "Duels won",
+   "home_team": 0,
+   "away_team": 1
+  },
+  {
+   "name": "Clearances",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Interceptions",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Errors leading to shot",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Errors leading to goal",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Goalkeeper saves",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "xGOT faced",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Goals prevented",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Goal kicks",
+   "home_team": 0,
+   "away_team": 0
+  }
+ ],
+ "1st-half": [
+  {
+   "name": "Expected goals (xG)",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Ball possession",
+   "home_team": "29%",
+   "away_team": "71%"
+  },
+  {
+   "name": "Total shots",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Shots on target",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Big chances",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Corner kicks",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Passes",
+   "home_team": "71% (5/7)",
+   "away_team": "88% (15/17)"
+  },
+  {
+   "name": "Expected goals (xG)",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "xG on target (xGOT)",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Total shots",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Shots on target",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Shots off target",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Blocked shots",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Shots inside the box",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Shots outside the box",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Hit the woodwork",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Big chances",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Corner kicks",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Touches in opposition box",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Accurate through passes",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Offsides",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Free kicks",
+   "home_team": 0,
+   "away_team": 1
+  },
+  {
+   "name": "Passes",
+   "home_team": "71% (5/7)",
+   "away_team": "88% (15/17)"
+  },
+  {
+   "name": "Long passes",
+   "home_team": "0% (0/1)",
+   "away_team": "50% (1/2)"
+  },
+  {
+   "name": "Passes in final third",
+   "home_team": "0% (0/0)",
+   "away_team": "0% (0/1)"
+  },
+  {
+   "name": "Expected assists (xA)",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Throw ins",
+   "home_team": 2,
+   "away_team": 1
+  },
+  {
+   "name": "Fouls",
+   "home_team": 1,
+   "away_team": 0
+  },
+  {
+   "name": "Tackles",
+   "home_team": "0% (0/0)",
+   "away_team": "100% (1/1)"
+  },
+  {
+   "name": "Duels won",
+   "home_team": 0,
+   "away_team": 1
+  },
+  {
+   "name": "Clearances",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Interceptions",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Errors leading to shot",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Errors leading to goal",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Goalkeeper saves",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "xGOT faced",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Goals prevented",
+   "home_team": 0,
+   "away_team": 0
+  },
+  {
+   "name": "Goal kicks",
+   "home_team": 0,
+   "away_team": 0
+  }
+ ]
+}

@@ -1,0 +1,2 @@
+# FootyPreds.bas must keep its CRLF line endings and ASCII bytes (VBA imports it as ANSI).
+*.bas -text

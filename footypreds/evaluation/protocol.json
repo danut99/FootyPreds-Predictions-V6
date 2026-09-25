@@ -1,0 +1,15 @@
+{
+  "name": "V8 chronological benchmark: tune on 2024-25, locked test 2025-26",
+  "history_seasons": ["2122", "2223", "2324"],
+  "validation_seasons": ["2425"],
+  "test_season": "2526",
+  "leagues": ["E0", "SP1", "D1", "I1", "F1"],
+  "selection_threshold": 0.85,
+  "rich_history_minimum": 20,
+  "prediction_time": "start of UTC match date; only previous dates available",
+  "primary_metric": "1X2 mean log loss over every holdout match",
+  "secondary_metrics": ["1X2 accuracy", "1X2 Brier mean across 3 classes", "over/under 2.5 log loss", "BTTS log loss", "selected accuracy", "coverage", "calibration", "per-league performance"],
+  "bootstrap": {"unit": "match date", "iterations": 1000, "seed": 7},
+  "calibration": {"seasons": ["2425"], "leagues": ["E0", "SP1", "D1", "I1", "F1", "E1", "SP2", "I2", "D2", "F2", "N1", "B1", "P1", "T1", "G1", "SC0"], "notes": "Goals calibration (totals_intercept, totals_slope, totals_market_weight) is fitted on validation-season predictions only: the 5 benchmark leagues plus the 11 football-data.co.uk leagues of the simulator (python -m footypreds.evaluation.sim_datasets --download). python -m footypreds.evaluation.tune --totals"},
+  "notes": "Parameters are tuned ONLY on the validation season (2024-25, the V7 holdout). The 2025-26 season is evaluated once with frozen parameters. Reference odds are football-data.co.uk market averages; their exact snapshot time is unspecified."
+}
