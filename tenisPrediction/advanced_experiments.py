@@ -75,9 +75,7 @@ def fatigue_records(data_dir):
 
         def load(player):
             recent = [
-                (date, minutes)
-                for date, minutes in workload[player]
-                if (day - date).days <= 14
+                (date, minutes) for date, minutes in workload[player] if (day - date).days <= 14
             ]
             minutes = sum(value for _, value in recent)
             rest = min(14, (day - workload[player][-1][0]).days) if workload[player] else 14
@@ -86,20 +84,27 @@ def fatigue_records(data_dir):
         rest_1, load_1 = load(keys[0])
         rest_2, load_2 = load(keys[1])
         if day.year in records:
-            records[day.year].append({
-                "p": probability,
-                "won": winner_first,
-                "rest": (rest_1 - rest_2) / 7,
-                "load": (load_2 - load_1) / 600,
-            })
+            records[day.year].append(
+                {
+                    "p": probability,
+                    "won": winner_first,
+                    "rest": (rest_1 - rest_2) / 7,
+                    "load": (load_2 - load_1) / 600,
+                }
+            )
         minutes = _number(row.get("minutes")) or max(45, game_count(row.get("score")) * 4)
         winner_key, loser_key = model.resolve_player(winner), model.resolve_player(loser)
         workload[winner_key].append((day, minutes))
         workload[loser_key].append((day, minutes))
         model.update(
-            winner, loser, surface, day,
-            _number(row.get("winner_rank")), _number(row.get("loser_rank")),
-            serve_record(row, "w"), serve_record(row, "l"),
+            winner,
+            loser,
+            surface,
+            day,
+            _number(row.get("winner_rank")),
+            _number(row.get("loser_rank")),
+            serve_record(row, "w"),
+            serve_record(row, "l"),
         )
     return records
 
@@ -190,10 +195,20 @@ def train_serve_return(data_dir, k, through=2024):
             continue
         surface = (row.get("surface") or "Hard").casefold()
         raw_default = 0.58 if tour == "wta" else 0.62
-        book.update(row["winner_name"], row["loser_name"], surface,
-                    winner_serve[0] / winner_serve[1], raw_default)
-        book.update(row["loser_name"], row["winner_name"], surface,
-                    loser_serve[0] / loser_serve[1], raw_default)
+        book.update(
+            row["winner_name"],
+            row["loser_name"],
+            surface,
+            winner_serve[0] / winner_serve[1],
+            raw_default,
+        )
+        book.update(
+            row["loser_name"],
+            row["winner_name"],
+            surface,
+            loser_serve[0] / loser_serve[1],
+            raw_default,
+        )
     return book
 
 

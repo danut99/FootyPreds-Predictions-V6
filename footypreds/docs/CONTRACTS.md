@@ -373,7 +373,9 @@ In your module:
 
 ```python
 from fastapi import APIRouter, Request
+
 router = APIRouter(prefix="/api", tags=["live"])
+
 
 @router.get("/live")
 async def live(request: Request, sport: Sport = "football"): ...

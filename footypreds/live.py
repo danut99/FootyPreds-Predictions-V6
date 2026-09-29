@@ -787,47 +787,237 @@ def tennis_games_won(stats, period):
     return None
 
 
-def tennis_game_handicaps(match, stats, q, current_set):
-    """Handicapuri game-uri din scorul derivat din statistici.
+# --- Games in play (point-level Markov model of footypreds.sports.tennis) --------------------
+# The pre-match input is a per-SET probability q. A game is much closer to a coin flip than a
+# set (a 70% set favourite wins only ~55% of the games), so q is inverted into service-point
+# probabilities (base + d, base - d) around the tour average, and the remaining games follow
+# the exact hold / tiebreak / set chain from the live game score. The server of the next game
+# is not in the feed: both cases are averaged.
+GAME_LINES = (-2.5, -1.5, 1.5, 2.5)
+DEFAULT_SERVE = {"men": 0.64, "women": 0.50}
 
-    Fluxul nu spune mereu cine servește, deci folosim o aproximație Normală prudentă pentru
-    game-urile rămase și marcăm piețele ca nedecontabile/orientative.
+
+def point_model():
+    """The point-level helpers (hold, tiebreak, set_outcomes, PARAMS) of the tennis analyzer."""
+    from footypreds.sports import tennis
+
+    return tennis
+
+
+def serve_base(match):
+    """Tour-average service-point win probability for the match's tour."""
+    tennis = point_model()
+    women = tennis.is_women(match)
+    params = getattr(tennis, "PARAMS", None)
+    name = "serve_women" if women else "serve_men"
+    return float(getattr(params, name, DEFAULT_SERVE["women" if women else "men"]))
+
+
+def set_win_from_points(pa, pb):
+    """P(home wins a set) with service points pa / pb, first server chosen at random."""
+    tennis = point_model()
+    first = sum(p for won, _, p in tennis.set_outcomes(pa, pb) if won)
+    second = sum(p for won, _, p in tennis.set_outcomes(pb, pa) if not won)
+    return (first + second) / 2
+
+
+@lru_cache(maxsize=512)
+def serve_points(q, base):
+    """Service-point probabilities (base + d, base - d) whose set-win probability equals q."""
+    room = min(base, 1 - base) - 0.01
+    low, high = -room, room
+    for _ in range(40):
+        middle = (low + high) / 2
+        if set_win_from_points(round(base + middle, 6), round(base - middle, 6)) < q:
+            low = middle
+        else:
+            high = middle
+    d = (low + high) / 2
+    return round(base + d, 6), round(base - d, 6)
+
+
+def set_over(home, away):
+    """True when a set game score is final (6-x by two, 7-5 or 7-6)."""
+    top, bottom = max(home, away), min(home, away)
+    return top >= 7 or (top >= 6 and top - bottom >= 2)
+
+
+def set_from_state(home, away, home_serves, pa, pb):
+    """{(home_won, home_games, away_games): p} of a set from a live game score.
+
+    `home_serves` says who serves the next game; at 6-6 the player due to serve opens the
+    tiebreak.
     """
-    output = []
-    for period, group, prefix in (
-        ("match", "Handicap game-uri (meci)", "live_games"),
-        (f"set-{current_set}", f"Setul {current_set} - handicap game-uri", "live_set_games"),
-    ):
-        score = tennis_games_won(stats, period)
-        if score is None:
-            continue
-        home, away = score
-        played = home + away
-        projected = 12.0 if period != "match" else 12.0 + 8.0 * max(0, 2 - current_set)
-        remaining = max(2.0, projected - played)
-        expected_margin = home - away + (2 * q - 1) * remaining
-        deviation = max(1.8, math.sqrt(remaining) * 0.9)
-        for line in (-2.5, -1.5, 1.5, 2.5):
-            probability = NORMAL.cdf((expected_margin + line) / deviation)
-            side = "1" if probability >= 0.5 else "2"
-            chosen_line = line if side == "1" else -line
-            chosen_probability = probability if side == "1" else 1 - probability
-            player = match.home if side == "1" else match.away
-            key = f"{prefix}_ah_{side}_{fmt_signed(chosen_line)}"
-            if any(m["key"] == key for m in output):
+    tennis = point_model()
+    hold_home, hold_away = tennis.hold(pa), tennis.hold(pb)
+    out = {}
+    frontier = {(home, away, home_serves): 1.0}
+    while frontier:
+        nxt = {}
+        for (i, j, serving), prob in frontier.items():
+            if set_over(i, j):
+                key = (i > j, i, j)
+                out[key] = out.get(key, 0.0) + prob
                 continue
-            output.append(
-                market(
-                    "tennis",
-                    key,
-                    group,
-                    chosen_probability,
-                    f"Scor game-uri {home}-{away}; estimare fără informația sigură "
-                    "despre serviciu.",
-                    selectable=False,
-                    name=f"{player} {fmt_signed(chosen_line)} game-uri",
-                )
+            if i == j == 6:
+                tb = tennis.tiebreak(pa, pb) if serving else 1 - tennis.tiebreak(pb, pa)
+                out[True, 7, 6] = out.get((True, 7, 6), 0.0) + prob * tb
+                out[False, 6, 7] = out.get((False, 6, 7), 0.0) + prob * (1 - tb)
+                continue
+            win = hold_home if serving else 1 - hold_away
+            for state, pr in (((i + 1, j, not serving), win), ((i, j + 1, not serving), 1 - win)):
+                nxt[state] = nxt.get(state, 0.0) + prob * pr
+        frontier = nxt
+    return out
+
+
+def set_margin(games):
+    """Winner's game margin of a finished set from its total games (6-x, 7-5, 7-6)."""
+    return 12 - games if games <= 10 else (2 if games == 12 else 1)
+
+
+def tennis_games_projection(q, base, best_of, home_sets, away_sets, set_games, done_margin):
+    """Exact distributions of the current-set and the final match game margin (home - away).
+
+    `set_games` is the live game score of the current set, `done_margin` the home game margin
+    of the sets already completed. Returns (set_margins, match_margins, remaining_games,
+    game_share), `remaining_games` being the expected number of games still to play and
+    `game_share` the home player's probability of winning a single game.
+    """
+    tennis = point_model()
+    pa, pb = serve_points(round(q, 6), round(base, 6))
+    need = sets_needed(best_of)
+    played = sum(set_games)
+    set_margins, match_margins = {}, {}
+    frontier = {}
+    remaining = 0.0
+    for home_serves in (True, False):
+        for (won, hg, ag), prob in set_from_state(*set_games, home_serves, pa, pb).items():
+            prob /= 2
+            set_margins[hg - ag] = set_margins.get(hg - ag, 0.0) + prob
+            left = hg + ag - played
+            remaining += prob * left
+            next_home = home_serves if left % 2 == 0 else not home_serves
+            state = (home_sets + won, away_sets + (not won), next_home, done_margin + hg - ag)
+            frontier[state] = frontier.get(state, 0.0) + prob
+    home_first = tennis.set_outcomes(pa, pb)
+    away_first = tuple((not won, g, pr) for won, g, pr in tennis.set_outcomes(pb, pa))
+    while frontier:
+        nxt = {}
+        for (sh, sa, home_serves, margin), prob in frontier.items():
+            if sh >= need or sa >= need:
+                match_margins[margin] = match_margins.get(margin, 0.0) + prob
+                continue
+            for won, games, pr in home_first if home_serves else away_first:
+                remaining += prob * pr * games
+                step = set_margin(games) if won else -set_margin(games)
+                serves = home_serves if games % 2 == 0 else not home_serves
+                state = (sh + won, sa + (not won), serves, margin + step)
+                nxt[state] = nxt.get(state, 0.0) + prob * pr
+        frontier = nxt
+    game_share = (tennis.hold(pa) + 1 - tennis.hold(pb)) / 2
+    return set_margins, match_margins, remaining, game_share
+
+
+def current_set_games(stats, current_set, match_games):
+    """Live game score of the current set: its own statistic, else match minus earlier sets."""
+    own = tennis_games_won(stats, f"set-{current_set}")
+    if own is not None:
+        return own
+    if match_games is None:
+        return None
+    home, away = match_games
+    for number in range(1, current_set):
+        earlier = tennis_games_won(stats, f"set-{number}")
+        if earlier is None:
+            return None
+        home, away = home - earlier[0], away - earlier[1]
+    return (home, away) if home >= 0 and away >= 0 else None
+
+
+def handicap_markets(match, prefix, group, margins, lines, why):
+    """Game-handicap markets from an exact margin distribution; the likelier side per line."""
+    output = []
+    for line in lines:
+        probability = sum(p for margin, p in margins.items() if margin + line > 0)
+        side = "1" if probability >= 0.5 else "2"
+        chosen_line = line if side == "1" else -line
+        chosen_probability = probability if side == "1" else 1 - probability
+        if decided(chosen_probability):
+            continue
+        key = f"{prefix}_ah_{side}_{fmt_signed(chosen_line)}"
+        if any(m["key"] == key for m in output):
+            continue
+        player = match.home if side == "1" else match.away
+        output.append(
+            market(
+                "tennis",
+                key,
+                group,
+                chosen_probability,
+                why,
+                selectable=False,
+                name=f"{player} {fmt_signed(chosen_line)} game-uri",
             )
+        )
+    return output
+
+
+def tennis_game_handicaps(match, stats, q, home_sets, away_sets, best_of=None):
+    """Handicapuri pe game-uri (setul curent și meciul) din scorul pe game-uri din statistici.
+
+    Șansa pe set q este convertită în șanse pe punct la serviciu (modelul Markov al
+    analizorului de tenis), apoi game-urile rămase urmează lanțul exact serviciu / tiebreak /
+    set de la scorul curent, pentru toate seturile rămase (cel mai bun din 3 sau 5). Cine
+    servește nu apare în flux: mediem ambele variante. Piețele sunt orientative
+    (nedecontabile din scorul final la seturi).
+    """
+    best_of = best_of or best_of_match(match)
+    need = sets_needed(best_of)
+    if home_sets >= need or away_sets >= need:
+        return []
+    current_set = home_sets + away_sets + 1
+    match_games = tennis_games_won(stats, "match")
+    set_games = current_set_games(stats, current_set, match_games)
+    if set_games is None:
+        return []
+    done_margin = None
+    if match_games is not None:
+        done_home = match_games[0] - set_games[0]
+        done_away = match_games[1] - set_games[1]
+        # Every completed set has at least 6 games; otherwise the statistics disagree.
+        if min(done_home, done_away) >= 0 and done_home + done_away >= 6 * (current_set - 1):
+            done_margin = done_home - done_away
+    set_margins, match_margins, remaining, share = tennis_games_projection(
+        q, serve_base(match), best_of, home_sets, away_sets, set_games, done_margin or 0
+    )
+    context = (
+        f"Șansa pe set {q:.0%} înseamnă ~{share:.0%} din game-uri pentru {match.home}; "
+        "cine servește acum nu se știe (mediem ambele variante)."
+    )
+    output = handicap_markets(
+        match,
+        "live_set_games",
+        f"Setul {current_set} - handicap game-uri",
+        set_margins,
+        GAME_LINES,
+        f"Setul {current_set}: {set_games[0]}-{set_games[1]} la game-uri. {context}",
+    )
+    if done_margin is None:
+        return output
+    mean = sum(m * p for m, p in match_margins.items())
+    centre = math.floor(mean) + 0.5
+    lines = sorted(set(GAME_LINES) | {-(centre + k) for k in (-1, 0, 1)})
+    total = sum(match_games) + remaining
+    output += handicap_markets(
+        match,
+        "live_games",
+        "Handicap game-uri (meci)",
+        match_margins,
+        lines,
+        f"Scor game-uri {match_games[0]}-{match_games[1]}; total estimat ~{total:.1f} "
+        f"game-uri (cel mai bun din {best_of}). {context}",
+    )
     return output
 
 
@@ -925,7 +1115,7 @@ def tennis_live(match, analysis=None, stats=None):
                 )
             )
     if stats:
-        markets.extend(tennis_game_handicaps(match, stats, q, current_set))
+        markets.extend(tennis_game_handicaps(match, stats, q, h0, a0, sets))
     markets = [m for m in markets if not (m["selectable"] and decided(m["probability"]))]
     if prematch["source"] == "default":
         unreliable(markets)

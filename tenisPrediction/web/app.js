@@ -81,6 +81,20 @@ function resultBadge(item) {
   if (!market || market.won === null || market.won === undefined) return '<span class="verdict void">NEVERIFICABIL</span>';
   return market.won ? '<span class="verdict won">✓ NIMERIT</span>' : '<span class="verdict lost">× RATAT</span>';
 }
+function tmlNote(item, shownMarket) {
+  // „selectează” apare doar când modelul v3 (amestec model + cote) alege exact jucătorul din
+  // recomandarea afișată; „precizie înaltă” marchează pragul strict (țintă 85%).
+  const tml = item.tml;
+  if (!tml?.known || !tml.pick) return '';
+  const chance = tml.pick === '1' ? tml.probability : 1 - tml.probability;
+  const pick = `${escapeHtml(tml.pick_name)} ${percent(chance)}`;
+  const high = tml.decision_high === 'selectează' ? ' · precizie înaltă' : '';
+  if (tml.decision === 'selectează' && shownMarket?.key === tml.pick) {
+    return ` · model TML v3: selectează ${pick}${high}`;
+  }
+  if (tml.decision === 'selectează') return ` · model TML v3: ${pick} (altă selecție decât recomandarea)`;
+  return ` · model TML v3: ${pick} · fără pariu${tml.validated === false ? ' (competiție nevalidată)' : ''}`;
+}
 function matchCard(item) {
   const match = item.match;
   const selectedMarket = marketsFor(item)[0] || item.tip;
@@ -95,7 +109,7 @@ function matchCard(item) {
     <div class="markets-list">${marketRows(item)}</div>
     <div class="recommendation"><div><small>RECOMANDAREA MODELULUI</small>
       <strong>${escapeHtml(selectedMarket.label)}</strong></div><b>${percent(selectedMarket.probability)}</b></div>
-    <footer><span>Încredere ${escapeHtml(item.grade)} · ${item.confidence}%${item.tml?.known ? ' · TML serviciu/retur + piață' : ''}</span>
+    <footer><span>Încredere ${escapeHtml(item.grade)} · ${item.confidence}%${tmlNote(item, selectedMarket)}</span>
       <span>${escapeHtml(item.summary)}</span></footer></article>`;
 }
 function liveMarketKind(market) {
@@ -318,25 +332,42 @@ async function loadDay() {
     if (!response.ok) throw new Error(data.detail || 'API indisponibil');
     document.querySelector('#day-label').textContent = `${data.total} MECIURI · ATP & WTA`;
     loadedItems = data.items;
-    await enhanceWithTml(loadedItems);
     categoryStats();
     renderBoard();
+    const items = loadedItems;
+    if (await enhanceWithTml(items) && items === loadedItems) {
+      categoryStats();
+      renderBoard();
+    }
   } catch (error) {
     matchesNode.innerHTML = `<div class="empty error"><strong>Nu am putut încărca meciurile.</strong><span>${escapeHtml(error.message)}</span></div>`;
   }
 }
+function marketOdds(item) {
+  // Cotele reale 1/2 (ca two_way din footypreds); fără cote -> null. Serverul scoate marja cu
+  // metoda validată. Nu se trimite niciodată probabilitatea modelului de bază: nu este un preț.
+  const markets = item.markets || item.main || [];
+  const first = Number(markets.find((market) => market.key === '1')?.odds || 0);
+  const second = Number(markets.find((market) => market.key === '2')?.odds || 0);
+  if (!(first > 1 && second > 1)) return null;
+  const total = 1 / first + 1 / second;
+  if (total < 0.97 || total > 1.35) return null;
+  return {odds_1: first, odds_2: second, market_probability: (1 / first) / total};
+}
 async function enhanceWithTml(items) {
   const payload = items.map((item) => {
-    const winner = (item.markets || item.main || []).find((market) => market.key === '1');
     const league = String(item.match.league || '').toLowerCase();
     const surface = ['clay', 'grass', 'carpet'].find((name) => league.includes(name)) || 'hard';
+    const kickoff = new Date(item.match.kickoff);
     return {id: item.match.id, home: item.match.home, away: item.match.away,
-      surface: surface[0].toUpperCase() + surface.slice(1), market_probability: winner?.probability || null};
+      surface: surface[0].toUpperCase() + surface.slice(1), league: String(item.match.league || '').slice(0, 200),
+      ...(marketOdds(item) || {}),
+      day: Number.isNaN(kickoff.getTime()) ? null : localDay(kickoff)};
   });
   try {
     const response = await fetch('/api/tml-probabilities', {method: 'POST',
       headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
-    if (!response.ok) return;
+    if (!response.ok) return false;
     const results = new Map((await response.json()).matches.map((match) => [match.id, match]));
     for (const item of items) {
       const result = results.get(item.match.id);
@@ -350,12 +381,21 @@ async function enhanceWithTml(items) {
       if (item.tip.key === '1') item.tip.probability = result.probability;
       if (item.tip.key === '2') item.tip.probability = 1 - result.probability;
     }
-  } catch (_) { /* Modelul de bază rămâne disponibil dacă stratul TML eșuează. */ }
+    return true;
+  } catch (_) { return false; /* Modelul de bază rămâne disponibil dacă stratul TML eșuează. */ }
 }
+let tmlLoading = false;
 async function health() {
   try {
     const response = await fetch('/api/health'); const data = await response.json();
+    if (data.status === 'loading') {
+      tmlLoading = true;
+      statusNode.textContent = 'Modelul v3 se antrenează…';
+      setTimeout(health, 15000);
+      return;
+    }
     statusNode.textContent = `Model activ · ${data.players} jucători`; statusNode.classList.add('ready');
+    if (tmlLoading) { tmlLoading = false; loadDay(); }
   } catch (_) { statusNode.textContent = 'Model indisponibil'; }
 }
 document.querySelector('#previous-day').addEventListener('click', () => { selectedDay = shifted(selectedDay, -1); loadDay(); });

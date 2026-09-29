@@ -1,68 +1,48 @@
-"""Benchmark walk-forward: python -m tenisPrediction.evaluate --test-year 2025."""
+"""Evaluare walk-forward: înveliș subțire peste ``tenisPrediction/benchmark.py``.
+
+Implicit evaluează modelul v2 pe anii de validare 2023 și 2024, ATP și WTA::
+
+    python -m tenisPrediction.evaluate
+    python -m tenisPrediction.evaluate --baseline            # modelul compact v1
+    python -m tenisPrediction.evaluate --tours atp,wta,challenger --json out.json
+
+Orice alt argument trece neschimbat la benchmark (``--years``, ``--param``, ``--records``...).
+Anul 2025 este testul blocat: benchmark-ul îl refuză fără ``--locked-test``.
+"""
 
 from __future__ import annotations
 
-import argparse
-import csv
-import json
-import math
-from datetime import datetime
-from pathlib import Path
+import sys
 
-from .model import CompactTennisModel, _number
+from . import benchmark
+
+MODEL = "tenisPrediction.model:benchmark_factory"
+BASELINE = "tenisPrediction.candidates.baseline:factory"
 
 
-def evaluate(data_dir: Path, train_years: list[int], test_year: int, threshold: float = 0.72):
-    model = CompactTennisModel.train_recent(data_dir, max(train_years), len(train_years))
-    total = correct = selected = selected_correct = 0
-    log_loss = 0.0
-    with (data_dir / f"{test_year}.csv").open(encoding="utf-8-sig", newline="") as handle:
-        rows = [
-            row for row in csv.DictReader(handle)
-            if row.get("tourney_date") and row.get("match_num")
-            and row.get("winner_name") and row.get("loser_name")
-        ]
-    rows.sort(key=lambda row: (row["tourney_date"], int(row["match_num"])))
-    for index, row in enumerate(rows):
-        # Orientarea este alternată pentru a împiedica învățarea coloanei „winner”.
-        winner_first = index % 2 == 0
-        first = row["winner_name"] if winner_first else row["loser_name"]
-        second = row["loser_name"] if winner_first else row["winner_name"]
-        rank_1 = _number(row.get("winner_rank" if winner_first else "loser_rank"))
-        rank_2 = _number(row.get("loser_rank" if winner_first else "winner_rank"))
-        prediction = model.predict(
-            first, second, row.get("surface") or "Hard", rank_1, rank_2, threshold
-        )
-        actual = 1.0 if winner_first else 0.0
-        probability = min(1 - 1e-12, max(1e-12, prediction.probability_1))
-        total += 1
-        correct += (probability >= 0.5) == bool(actual)
-        log_loss -= actual * math.log(probability) + (1 - actual) * math.log(1 - probability)
-        if prediction.decision == "selectează":
-            selected += 1
-            selected_correct += (probability >= 0.5) == bool(actual)
-        model.update(row["winner_name"], row["loser_name"], row.get("surface") or "Hard",
-                     datetime.strptime(row["tourney_date"], "%Y%m%d").date(),
-                     _number(row.get("winner_rank")), _number(row.get("loser_rank")))
-    return {
-        "train_years": train_years, "test_year": test_year, "matches": total,
-        "accuracy": round(correct / total, 4), "log_loss": round(log_loss / total, 4),
-        "threshold": threshold, "selected": selected,
-        "coverage": round(selected / total, 4),
-        "selected_accuracy": round(selected_correct / selected, 4) if selected else None,
-    }
+def build_argv(argv: list[str]) -> list[str]:
+    args = list(argv)
+    model = MODEL
+    if "--baseline" in args:
+        args.remove("--baseline")
+        model = BASELINE
+
+    def given(flag: str) -> bool:
+        return any(arg == flag or arg.startswith(flag + "=") for arg in args)
+
+    defaults = []
+    if not given("--model"):
+        defaults += ["--model", model]
+    if not given("--years"):
+        defaults += ["--years", "2023,2024"]
+    if not given("--tours"):
+        defaults += ["--tours", "atp,wta"]
+    return defaults + args
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--data-dir", type=Path, default=Path(__file__).parent / "tml-data")
-    parser.add_argument("--test-year", type=int, default=2025)
-    parser.add_argument("--seasons", type=int, default=4)
-    parser.add_argument("--threshold", type=float, default=0.72)
-    args = parser.parse_args()
-    years = list(range(args.test_year - args.seasons, args.test_year))
-    print(json.dumps(evaluate(args.data_dir, years, args.test_year, args.threshold), indent=2))
+def main(argv: list[str] | None = None) -> int:
+    return benchmark.main(build_argv(sys.argv[1:] if argv is None else argv))
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

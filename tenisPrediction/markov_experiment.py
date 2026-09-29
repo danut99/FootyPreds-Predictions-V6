@@ -30,13 +30,9 @@ def metrics(rows, model, personalized, step=5):
         default = tennis.PARAMS.serve_women if tennis.is_women(match) else tennis.PARAMS.serve_men
         surface = tennis.surface_of(match) or "hard"
         base = (
-            model.serve_base(match.home, match.away, surface, default)
-            if personalized
-            else default
+            model.serve_base(match.home, match.away, surface, default) if personalized else default
         )
-        totals, _ = tennis.games_totals(
-            priced[0], sets, base, tennis.PARAMS.set_spread
-        )
+        totals, _ = tennis.games_totals(priced[0], sets, base, tennis.PARAMS.set_spread)
         mean = sum(games * probability for games, probability in totals.items())
         loss -= math.log(max(1e-12, totals.get(actual, 0.0)))
         error += abs(mean - actual)
@@ -61,8 +57,7 @@ def experiment(data_dir: Path, test_year: int, step=5):
         "baseline": baseline,
         "player_service_markov": personalized,
         "delta": {
-            key: round(personalized[key] - baseline[key], 6)
-            for key in ("log_loss", "mae", "bias")
+            key: round(personalized[key] - baseline[key], 6) for key in ("log_loss", "mae", "bias")
         },
         "accepted": (
             personalized["log_loss"] < baseline["log_loss"]

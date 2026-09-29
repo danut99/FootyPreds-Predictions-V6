@@ -367,6 +367,155 @@ def test_tennis_detail_adds_game_handicaps_from_stats():
     keys = {market["key"] for market in item["markets"]}
     assert any(key.startswith("live_games_ah_") for key in keys)
     assert any(key.startswith("live_set_games_ah_") for key in keys)
+    assert all(not m["selectable"] for m in item["markets"] if "games_ah_" in m["key"])
+
+
+def games_stats(match=None, **sets):
+    """A `Total games won` statistics payload: match=(home, away), set_3=(home, away)..."""
+
+    def row(home, away):
+        total = home + away
+        return [
+            {
+                "name": "Total games won",
+                "home": f"{home * 100 // max(total, 1)}% ({home}/{total})",
+                "away": f"{away * 100 // max(total, 1)}% ({away}/{total})",
+            }
+        ]
+
+    out = {"match": row(*match)} if match else {}
+    out |= {name.replace("_", "-"): row(*score) for name, score in sets.items()}
+    return out
+
+
+def moments(dist):
+    mean = sum(k * p for k, p in dist.items())
+    return mean, math.sqrt(sum(k * k * p for k, p in dist.items()) - mean * mean)
+
+
+@pytest.mark.parametrize("q", [0.3, 0.5, 0.7, 0.85])
+def test_game_model_is_consistent_with_the_set_probability(q):
+    # Regression: q (a SET probability) was used as a per-GAME probability, so a 70% set
+    # favourite "won" 70% of the remaining games and every margin was hugely overstated.
+    base = 0.64
+    set_margins, match_margins, _, share = lv.tennis_games_projection(q, base, 3, 0, 0, (0, 0), 0)
+    assert sum(p for m, p in set_margins.items() if m > 0) == pytest.approx(q, abs=1e-4)
+    assert sum(set_margins.values()) == pytest.approx(1)
+    assert sum(match_margins.values()) == pytest.approx(1)
+    # A game is much closer to a coin flip than a set.
+    assert abs(share - 0.5) <= abs(q - 0.5) / 2 + 1e-4
+    mean, _ = moments(match_margins)
+    if q == 0.5:
+        assert mean == pytest.approx(0, abs=1e-3)
+    else:
+        # The old model expected (2q - 1) x ~20 remaining games of margin.
+        assert abs(mean) < abs((2 * q - 1) * 20) / 2
+        assert (mean > 0) == (q > 0.5)
+
+
+def test_seventy_percent_set_favourite_wins_about_55_percent_of_games():
+    *_, share = lv.tennis_games_projection(0.7, 0.64, 3, 0, 0, (0, 0), 0)
+    assert 0.53 < share < 0.58
+    pa, pb = lv.serve_points(0.7, 0.64)
+    assert pa > 0.64 > pb and pa - 0.64 == pytest.approx(0.64 - pb, abs=1e-5)
+
+
+def test_live_set_game_handicap_matches_the_set_probability():
+    odds = {"1": 1.35, "2": 3.4}
+    stats = games_stats(match=(0, 0), set_1=(0, 0))
+    item = lv.live_item(game("tennis", 0, 0, odds, period="S1"), stats=stats)
+    by_key = check_item(item)
+    q = item["pre_match"]["expected"]["set_win"]
+    # Home -1.5 in the set means winning it by two games or more: less likely than the set.
+    minus = by_key.get("live_set_games_ah_1_-1.5") or by_key.get("live_set_games_ah_2_+1.5")
+    p_minus = minus["probability"] if minus["key"].endswith("_1_-1.5") else 1 - minus["probability"]
+    assert 0.5 < p_minus < q
+    # The old Normal model put this near 0.95 for a ~70% set favourite.
+    assert p_minus < 0.8
+
+
+def test_remaining_games_follow_the_set_score_and_best_of():
+    # Regression: the match projection was 12 + 8 * max(0, 2 - current_set) games, so in the
+    # third set (23 games already played) the remaining games clamped to 2, and best of 5 was
+    # ignored.
+    q = 0.6
+    *_, bo3_start, _ = lv.tennis_games_projection(q, 0.64, 3, 0, 0, (0, 0), 0)
+    *_, bo5_start, _ = lv.tennis_games_projection(q, 0.64, 5, 0, 0, (0, 0), 0)
+    assert 20 < bo3_start < 30 and 35 < bo5_start < 50
+    third = lv.tennis_games_projection(q, 0.64, 3, 1, 1, (4, 3), 0)
+    fifth = lv.tennis_games_projection(q, 0.64, 5, 2, 2, (4, 3), 0)
+    assert 2 < third[2] < 7
+    # A deciding set is a deciding set: best of 3 at 1-1 equals best of 5 at 2-2.
+    assert fifth[2] == pytest.approx(third[2])
+    assert fifth[1] == pytest.approx(third[1])
+    # Best of 5 at 2-0 still has at least one full set to play.
+    *_, bo5_mid, _ = lv.tennis_games_projection(q, 0.64, 5, 2, 0, (0, 0), 0)
+    assert bo5_mid > 6
+
+
+def test_match_game_handicap_uses_completed_sets_and_best_of_five():
+    slam = "ATP - SINGLES: US Open (USA), hard"
+    stats = games_stats(match=(20, 16), set_4=(2, 2))
+    item = lv.live_item(game("tennis", 2, 1, {"1": 1.8, "2": 2.0}, league=slam), stats=stats)
+    check_item(item)
+    match_markets = [m for m in item["markets"] if m["key"].startswith("live_games_ah_")]
+    assert match_markets and "cel mai bun din 5" in match_markets[0]["why"]
+    total = float(match_markets[0]["why"].split("~")[1].split(" ")[0])
+    assert 36 + 4 < total < 36 + 30
+    # Completed sets 18-14 (+4 for home): home -1.5 on the match is the likelier side.
+    p = probs(item)
+    assert p.get("live_games_ah_1_-1.5", 0) > 0.6
+
+
+def test_current_set_games_fall_back_to_match_minus_earlier_sets():
+    stats = games_stats(match=(10, 7), set_1=(6, 4))
+    assert lv.current_set_games(stats, 2, lv.tennis_games_won(stats, "match")) == (4, 3)
+    assert lv.current_set_games(games_stats(match=(10, 7)), 2, (10, 7)) is None
+    first = games_stats(match=(3, 1))
+    assert lv.current_set_games(first, 1, (3, 1)) == (3, 1)
+
+
+def test_inconsistent_statistics_drop_the_match_handicap():
+    # Two completed sets need at least 12 games; 5 games cannot be right.
+    stats = games_stats(match=(4, 3), set_3=(2, 2))
+    item = lv.live_item(game("tennis", 1, 1, {"1": 1.8, "2": 2.0}, period="S3"), stats=stats)
+    keys = {m["key"] for m in item["markets"]}
+    assert not any(k.startswith("live_games_ah_") for k in keys)
+    assert any(k.startswith("live_set_games_ah_") for k in keys)
+    finished = lv.tennis_game_handicaps(game("tennis", 2, 0), stats, 0.6, 2, 0, 3)
+    assert finished == []
+
+
+def test_game_margin_variance_is_sensible():
+    pa, pb = lv.serve_points(0.5, 0.64)
+    for home_serves in (True, False):
+        dist = lv.set_from_state(0, 0, home_serves, pa, pb)
+        assert sum(dist.values()) == pytest.approx(1)
+        for won, home, away in dist:
+            assert lv.set_over(home, away) and won == (home > away)
+            assert (home, away) not in ((8, 6), (6, 5), (7, 4))
+    set_margins, match_margins, *_ = lv.tennis_games_projection(0.5, 0.64, 3, 0, 0, (0, 0), 0)
+    assert set(set_margins) <= {m for m in range(-6, 7) if m}
+    _, set_sd = moments(set_margins)
+    _, match_sd = moments(match_margins)
+    assert 2.5 < set_sd < 4.5 and set_sd < match_sd < 7
+    # Late in a set the margin is nearly fixed: at 5-1 the set sd collapses.
+    late, *_ = lv.tennis_games_projection(0.5, 0.64, 3, 0, 0, (5, 1), 0)
+    assert moments(late)[1] < set_sd / 2
+    # Handicap probabilities fall as the line gets harder for the home player.
+    lines = [
+        p
+        for p in (
+            sum(v for m, v in match_margins.items() if m + x > 0) for x in (3.5, 1.5, -1.5, -3.5)
+        )
+    ]
+    assert lines == sorted(lines, reverse=True)
+    # At 6-6 the player due to serve opens the tiebreak.
+    tennis = lv.point_model()
+    tb_home = lv.set_from_state(6, 6, True, 0.7, 0.6)[True, 7, 6]
+    tb_away = lv.set_from_state(6, 6, False, 0.7, 0.6)[True, 7, 6]
+    assert tb_home == pytest.approx(tennis.tiebreak(0.7, 0.6))
+    assert tb_away == pytest.approx(1 - tennis.tiebreak(0.6, 0.7))
 
 
 # --- basketball ----------------------------------------------------------------------------
