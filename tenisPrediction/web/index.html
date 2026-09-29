@@ -1,7 +1,7 @@
 <!doctype html><html lang="ro"><head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TenisPrediction · Meciurile zilei</title>
-  <link rel="stylesheet" href="/assets/style.css?v=17"><script src="/assets/app.js?v=17" defer></script>
+  <link rel="stylesheet" href="/assets/style.css?v=19"><script src="/assets/app.js?v=19" defer></script>
 </head><body><main>
   <header class="topbar">
     <div class="brand"><i>TP</i><span>TenisPrediction<small>daily intelligence</small></span></div>
@@ -36,6 +36,7 @@
     <div><span>Format</span><div class="filter-group" id="daily-mode">
       <button type="button" class="active" data-daily-mode="single">Meciuri</button>
       <button type="button" data-daily-mode="double">2 combinate</button>
+      <button type="button" data-daily-mode="ticket">Bilet cu cotă</button>
     </div></div>
     <div><span>Șansă minimă / selecție</span><div class="filter-group" id="chance-filter">
       <button type="button" class="active" data-chance="0">Toate</button>
@@ -51,6 +52,22 @@
       <button type="button" data-market="score" data-label="Scor seturi">Scor seturi</button>
       <button type="button" data-market="games" data-label="Game-uri">Game-uri</button>
     </div></div>
+  </section>
+  <section class="ticket-controls hidden" id="ticket-controls" aria-label="Generator de bilet">
+    <label>Cotă totală minimă<input id="ticket-odds" type="number" min="1.1" max="1000" step="0.1"
+      value="3" inputmode="decimal"></label>
+    <div><span>Rapid</span><div class="filter-group" id="ticket-presets">
+      <button type="button" data-ticket-odds="2">2</button>
+      <button type="button" class="active" data-ticket-odds="3">3</button>
+      <button type="button" data-ticket-odds="5">5</button>
+      <button type="button" data-ticket-odds="10">10</button>
+      <button type="button" data-ticket-odds="20">20</button>
+    </div></div>
+    <label>Selecții maxime<select id="ticket-legs"><option value="">Automat</option>
+      <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+      <option value="5">5</option><option value="6">6</option><option value="8">8</option>
+      <option value="10">10</option></select></label>
+    <button type="button" id="ticket-generate">Generează bilet</button>
   </section>
   <p class="filter-note daily-view" id="filter-note"></p>
   <section id="summary" class="summary-row daily-view hidden"></section>

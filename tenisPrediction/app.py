@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from . import tickets
 from .model import (
     NO_BET,
     ODDS_MARGIN,
@@ -217,6 +218,11 @@ def create_app(
                 }
             )
         return {"matches": output, "market_weights": list(MARKET_WEIGHTS), "version": VERSION}
+
+    @app.post("/api/ticket")
+    def ticket(request: tickets.TicketRequest):
+        # Nu are nevoie de model: primește selecțiile cu probabilitatea deja afișată în pagină.
+        return tickets.build(request)
 
     @app.get("/api/predict")
     def predict(

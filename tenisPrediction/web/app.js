@@ -4,6 +4,11 @@ const matchesNode = document.querySelector('#matches');
 const statusNode = document.querySelector('#status');
 const picker = document.querySelector('#date-picker');
 const summaryNode = document.querySelector('#summary');
+// Orele și zilele se afișează mereu la ora României, indiferent de fusul orar al calculatorului.
+const TIME_ZONE = 'Europe/Bucharest';
+const dayFormat = new Intl.DateTimeFormat('en-CA', {
+  timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit'
+});
 let selectedDay = localDay(new Date());
 let loadedItems = [];
 let minimumChance = 0;
@@ -13,12 +18,21 @@ let liveItems = [];
 let liveMode = 'single';
 let dailyMode = 'single';
 let matchStatus = 'all';
+let liveView = false;
+let ticketRequest = 0;
 
 function localDay(day) {
-  return new Date(day.getTime() - day.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  // Ziua calendaristică (YYYY-MM-DD) a momentului dat, la ora României.
+  return dayFormat.format(day);
+}
+function clockTime(value, options = {}) {
+  return new Date(value).toLocaleTimeString('ro-RO', {
+    timeZone: TIME_ZONE, hour: '2-digit', minute: '2-digit', ...options
+  });
 }
 function shifted(iso, amount) {
-  const day = new Date(`${iso}T12:00:00`); day.setDate(day.getDate() + amount); return localDay(day);
+  const day = new Date(`${iso}T12:00:00Z`); day.setUTCDate(day.getUTCDate() + amount);
+  return day.toISOString().slice(0, 10);
 }
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
@@ -27,7 +41,8 @@ function escapeHtml(value) {
 }
 function percent(value) { return `${Math.round(Number(value || 0) * 100)}%`; }
 function prettyDay(iso, options = {}) {
-  return new Intl.DateTimeFormat('ro-RO', options).format(new Date(`${iso}T12:00:00`));
+  return new Intl.DateTimeFormat('ro-RO', {...options, timeZone: 'UTC'})
+    .format(new Date(`${iso}T12:00:00Z`));
 }
 function renderDates() {
   const today = localDay(new Date());
@@ -98,7 +113,7 @@ function tmlNote(item, shownMarket) {
 function matchCard(item) {
   const match = item.match;
   const selectedMarket = marketsFor(item)[0] || item.tip;
-  const time = new Date(match.kickoff).toLocaleTimeString('ro-RO', {hour: '2-digit', minute: '2-digit'});
+  const time = clockTime(match.kickoff);
   const center = item.result ? `final · ${escapeHtml(item.result.score)}` : escapeHtml(time);
   return `<article class="match-card ${selectedMarket.won === true ? 'is-won' : ''} ${selectedMarket.won === false ? 'is-lost' : ''}">
     <header><span>${escapeHtml(item.competition)}</span>${resultBadge(item)}</header>
@@ -243,6 +258,86 @@ function dailyDoubleCards(items) {
       <footer><span>Selecțiile provin obligatoriu din meciuri diferite.</span></footer></article>`;
   }).join('');
 }
+function ticketChance(value) {
+  const probability = Number(value || 0);
+  return probability < 0.1 ? `${(probability * 100).toFixed(1)}%` : percent(probability);
+}
+function ticketLegs() {
+  // Pe zilele cu meciuri viitoare intră doar acestea; pe o zi încheiată biletul este retroactiv
+  // (arată ce ar fi ales generatorul și dacă ar fi ieșit). Filtrele de piață și șansă se aplică.
+  const now = Date.now();
+  const upcoming = loadedItems.filter((item) => item.match.status === 'scheduled'
+    && new Date(item.match.kickoff).getTime() > now);
+  const retro = !upcoming.length;
+  const pool = retro ? loadedItems.filter((item) => item.match.status === 'finished') : upcoming;
+  const legs = [];
+  for (const item of pool) {
+    for (const market of marketsFor(item)) {
+      const odds = Number(market.odds || 0);
+      const probability = Number(market.probability || 0);
+      if (market.estimate || market.selectable === false || !(odds > 1)) continue;
+      if (!(probability > 0) || probability < minimumChance) continue;
+      legs.push({match_id: String(item.match.id), key: String(market.key).slice(0, 60),
+        label: String(market.label || market.key).slice(0, 160), group: String(market.group || '').slice(0, 80),
+        probability: Math.min(1, probability), odds, kickoff: String(item.match.kickoff || '').slice(0, 40),
+        home: String(item.match.home || '').slice(0, 100), away: String(item.match.away || '').slice(0, 100),
+        competition: String(item.competition || '').slice(0, 200),
+        won: typeof market.won === 'boolean' ? market.won : null});
+    }
+  }
+  return {legs: legs.slice(0, 3000), retro};
+}
+function ticketVerdict(ticket, retro) {
+  if (ticket.status === 'won') return '<span class="verdict won">✓ CÂȘTIGAT</span>';
+  if (ticket.status === 'lost') return '<span class="verdict lost">× PIERDUT</span>';
+  if (retro) return '<span class="verdict void">NEVERIFICABIL</span>';
+  return '<span class="verdict pending">DE JUCAT</span>';
+}
+function ticketCard(ticket, title, retro) {
+  const count = ticket.legs.length;
+  const legs = ticket.legs.map((leg, index) => `<div class="combo-leg"><i>${index + 1}</i><div>
+      <small>${escapeHtml(leg.home)} – ${escapeHtml(leg.away)} · ${escapeHtml(clockTime(leg.kickoff))}</small>
+      <strong>${escapeHtml(leg.label)}</strong><em>${escapeHtml(leg.competition)}</em></div>
+      <b>${Number(leg.odds).toFixed(2)}<small>${percent(leg.probability)}${leg.won === true ? ' · ✓' : leg.won === false ? ' · ×' : ''}</small></b></div>`).join('');
+  return `<article class="match-card combo-card ticket-card ${ticket.status === 'won' ? 'is-won' : ''} ${ticket.status === 'lost' ? 'is-lost' : ''}">
+    <header><span>${escapeHtml(title)} · ${count} ${count === 1 ? 'SELECȚIE' : 'SELECȚII'}</span>${ticketVerdict(ticket, retro)}</header>
+    <div class="combo-probability"><strong>${Number(ticket.total_odds).toFixed(2)}</strong>
+      <span>cotă totală · șansă estimată ${escapeHtml(ticketChance(ticket.probability))}</span></div>
+    ${legs}
+    <footer><span>Cotă minimă cerută ${escapeHtml(Number(ticket.min_odds).toFixed(2))} · o selecție pe meci · probabilități înmulțite</span></footer></article>`;
+}
+async function generateTicket() {
+  const request = ++ticketRequest;
+  const minOdds = Number(document.querySelector('#ticket-odds').value);
+  if (!(minOdds >= 1.1 && minOdds <= 1000)) {
+    matchesNode.innerHTML = '<div class="empty error"><strong>Cota minimă trebuie să fie între 1.10 și 1000.</strong></div>';
+    return;
+  }
+  const {legs, retro} = ticketLegs();
+  const maxLegs = document.querySelector('#ticket-legs').value;
+  document.querySelector('#filter-note').textContent = `${legs.length} selecții posibile din ${new Set(legs.map((leg) => leg.match_id)).size} meciuri${retro ? ' încheiate · bilet retroactiv' : ' care nu au început'}${minimumChance ? ` · fiecare ≥ ${percent(minimumChance)}` : ''}`;
+  matchesNode.innerHTML = '<div class="loader"><i></i><p>Caut cel mai sigur bilet…</p></div>';
+  try {
+    const response = await fetch('/api/ticket', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({min_odds: minOdds, max_legs: maxLegs ? Number(maxLegs) : null, legs})});
+    const data = await response.json();
+    if (request !== ticketRequest || dailyMode !== 'ticket') return;
+    if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Cererea biletului a eșuat');
+    if (!data.ticket) {
+      matchesNode.innerHTML = `<div class="empty"><strong>Nu am găsit un bilet cu cota minimă ${escapeHtml(minOdds.toFixed(2))}.</strong><span>${escapeHtml(data.reason)}</span></div>`;
+      return;
+    }
+    const cards = [ticketCard(data.ticket, 'BILETUL CEL MAI SIGUR', retro),
+      ...data.alternatives.map((ticket, index) => ticketCard(ticket, `ALTERNATIVĂ ${index + 1}`, retro))];
+    matchesNode.innerHTML = cards.join('') + `<p class="filter-note">${escapeHtml(data.assumption)} ${escapeHtml(data.disclaimer)}</p>`;
+  } catch (error) {
+    if (request !== ticketRequest) return;
+    matchesNode.innerHTML = `<div class="empty error"><strong>Nu am putut genera biletul.</strong><span>${escapeHtml(error.message)}</span></div>`;
+  }
+}
+function syncTicketControls() {
+  document.querySelector('#ticket-controls').classList.toggle('hidden', liveView || dailyMode !== 'ticket');
+}
 function renderLive() {
   if (!liveItems.length) return;
   const node = document.querySelector('#live-matches');
@@ -270,9 +365,7 @@ async function refreshLive() {
     liveItems = data.matches;
     if (liveItems.length) renderLive();
     else node.innerHTML = '<div class="empty"><strong>Nu există meciuri live acum.</strong><span>Poți actualiza din nou mai târziu.</span></div>';
-    const time = new Date(data.updated_at).toLocaleTimeString('ro-RO', {
-      hour: '2-digit', minute: '2-digit', second: '2-digit'
-    });
+    const time = clockTime(data.updated_at, {second: '2-digit'});
     document.querySelector('#live-updated').textContent = `${data.count} meciuri · ultima cerere: ${time}`;
   } catch (error) {
     node.innerHTML = `<div class="empty error"><strong>Actualizarea a eșuat.</strong><span>${escapeHtml(error.message)}</span></div>`;
@@ -311,7 +404,10 @@ function renderBoard() {
     score: 'scor seturi', games: 'estimări game-uri'};
   const statusLabels = {all: 'toate stările', upcoming: 'nu au început', finished: 'încheiate'};
   document.querySelector('#filter-note').textContent = `${visible.length} din ${loadedItems.length} meciuri · ${statusLabels[matchStatus]} · ${marketLabels[marketType]}${valueMode ? ' · probabilitate ≥58% și cotă reală/corectă ≥1.35' : minimumChance ? ` · minimum ${percent(minimumChance)}` : ''}`;
-  if (dailyMode === 'double') {
+  if (dailyMode === 'ticket') {
+    summaryNode.classList.add('hidden');
+    generateTicket();
+  } else if (dailyMode === 'double') {
     summaryNode.classList.add('hidden');
     const cards = dailyDoubleCards(visible);
     matchesNode.innerHTML = cards || '<div class="empty"><strong>Nu există combinații pentru filtrele alese.</strong></div>';
@@ -403,10 +499,27 @@ document.querySelector('#next-day').addEventListener('click', () => { selectedDa
 picker.addEventListener('change', () => { if (picker.value) { selectedDay = picker.value; loadDay(); } });
 document.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => {
   const live = button.dataset.view === 'live';
+  liveView = live;
   document.querySelectorAll('[data-view]').forEach((node) => node.classList.toggle('active', node === button));
   document.querySelectorAll('.daily-view').forEach((node) => node.classList.toggle('hidden', live));
   document.querySelector('#live-panel').classList.toggle('hidden', !live);
+  syncTicketControls();
 }));
+document.querySelector('#ticket-generate').addEventListener('click', generateTicket);
+document.querySelector('#ticket-odds').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') generateTicket();
+});
+document.querySelector('#ticket-odds').addEventListener('input', () => {
+  const value = Number(document.querySelector('#ticket-odds').value);
+  document.querySelectorAll('[data-ticket-odds]').forEach((node) => node.classList.toggle(
+    'active', Number(node.dataset.ticketOdds) === value));
+});
+document.querySelectorAll('[data-ticket-odds]').forEach((button) => button.addEventListener('click', () => {
+  document.querySelector('#ticket-odds').value = button.dataset.ticketOdds;
+  document.querySelectorAll('[data-ticket-odds]').forEach((node) => node.classList.toggle('active', node === button));
+  generateTicket();
+}));
+document.querySelector('#ticket-legs').addEventListener('change', generateTicket);
 document.querySelector('#refresh-live').addEventListener('click', refreshLive);
 document.querySelectorAll('[data-status]').forEach((button) => button.addEventListener('click', () => {
   matchStatus = button.dataset.status;
@@ -420,6 +533,7 @@ document.querySelector('#live-matches').addEventListener('click', (event) => {
 document.querySelectorAll('[data-daily-mode]').forEach((button) => button.addEventListener('click', () => {
   dailyMode = button.dataset.dailyMode;
   document.querySelectorAll('[data-daily-mode]').forEach((node) => node.classList.toggle('active', node === button));
+  syncTicketControls();
   renderBoard();
 }));
 document.querySelectorAll('[data-live-mode]').forEach((button) => button.addEventListener('click', () => {
