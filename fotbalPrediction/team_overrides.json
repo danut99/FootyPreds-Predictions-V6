@@ -1,0 +1,109 @@
+{
+ "_nota": "Nume FlashScore -> nume football-data.co.uk, pe cod de ligă. Adaugă aici numele pe care /api/unresolved le arată ca nerezolvate. Cheile se normalizează (fără diacritice și punctuație).",
+ "E0": {
+  "Manchester Utd": "Man United",
+  "Manchester City": "Man City",
+  "Nottingham": "Nott'm Forest",
+  "Nottingham Forest": "Nott'm Forest",
+  "Tottenham Hotspur": "Tottenham",
+  "Wolverhampton": "Wolves",
+  "Newcastle Utd": "Newcastle"
+ },
+ "E1": {
+  "Sheffield Utd": "Sheffield United",
+  "Sheffield Wed": "Sheffield Weds",
+  "West Bromwich": "West Brom",
+  "Queens Park Rangers": "QPR"
+ },
+ "E2": {
+  "Peterborough": "Peterboro",
+  "MK Dons": "Milton Keynes Dons",
+  "Sheffield Wed": "Sheffield Weds"
+ },
+ "E3": {
+  "MK Dons": "Milton Keynes Dons",
+  "Bristol Rovers": "Bristol Rvs",
+  "Crawley": "Crawley Town",
+  "Fleetwood": "Fleetwood Town",
+  "Newport": "Newport County"
+ },
+ "SC1": {
+  "Inverness": "Inverness C",
+  "Raith": "Raith Rvs"
+ },
+ "SC2": {
+  "Queen of the South": "Queen of Sth",
+  "Inverness": "Inverness C"
+ },
+ "D1": {
+  "B. Monchengladbach": "M'gladbach",
+  "Eintracht Frankfurt": "Ein Frankfurt",
+  "Bayer Leverkusen": "Leverkusen",
+  "St. Pauli": "St Pauli",
+  "Hamburger SV": "Hamburg",
+  "Bayern": "Bayern Munich"
+ },
+ "I1": {
+  "AC Milan": "Milan",
+  "AS Roma": "Roma",
+  "Hellas Verona": "Verona"
+ },
+ "SP1": {
+  "Atl. Madrid": "Ath Madrid",
+  "Ath. Bilbao": "Ath Bilbao",
+  "Athletic Bilbao": "Ath Bilbao",
+  "Real Sociedad": "Sociedad",
+  "Celta Vigo": "Celta",
+  "Espanyol": "Espanol",
+  "Rayo Vallecano": "Vallecano",
+  "Real Betis": "Betis",
+  "Dep. La Coruna": "La Coruna",
+  "Racing Santander": "Santander"
+ },
+ "SP2": {
+  "Racing Santander": "Santander",
+  "Dep. La Coruna": "La Coruna",
+  "Gijon": "Sp Gijon",
+  "Sporting Gijon": "Sp Gijon"
+ },
+ "F1": {
+  "PSG": "Paris SG",
+  "Paris Saint-Germain": "Paris SG"
+ },
+ "F2": {
+  "St Etienne": "St Etienne",
+  "Pau": "Pau FC"
+ },
+ "N1": {
+  "PSV": "PSV Eindhoven",
+  "Sittard": "For Sittard",
+  "G.A. Eagles": "Go Ahead Eagles",
+  "AZ": "AZ Alkmaar",
+  "Fortuna Sittard": "For Sittard"
+ },
+ "B1": {
+  "Union SG": "St. Gilloise",
+  "St. Truiden": "St Truiden",
+  "Standard Liege": "Standard",
+  "Royal Antwerp": "Antwerp",
+  "OH Leuven": "Oud-Heverlee Leuven"
+ },
+ "P1": {
+  "Sporting CP": "Sp Lisbon",
+  "SC Braga": "Sp Braga",
+  "Vitoria Guimaraes": "Guimaraes",
+  "Guimaraes": "Guimaraes"
+ },
+ "T1": {
+  "Istanbul Basaksehir": "Buyuksehyr",
+  "Basaksehir": "Buyuksehyr",
+  "Goztepe": "Goztep"
+ },
+ "G1": {
+  "Olympiacos Piraeus": "Olympiakos",
+  "Olympiacos": "Olympiakos",
+  "PAOK Thessaloniki": "PAOK",
+  "AEL Larissa": "Larisa",
+  "Larissa": "Larisa"
+ }
+}

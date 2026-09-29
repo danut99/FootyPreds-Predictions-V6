@@ -15,6 +15,8 @@ FootyPreds V8 is a local prediction app for football, basketball and tennis. Eve
 - `tests/` (pytest), `scripts/`, `docs/`.
 - `data/`: runtime SQLite and benchmark files. It is git-ignored; never commit it.
 
+Separate site packages at the repository root mount the core app under `/core`: `tenisPrediction/` (tennis, port 8010) and `fotbalPrediction/` (football, port 8020: `data.py`, `markets.py`, `benchmark.py` harness with a locked 2526 test, `candidates/`, production `model.py` + `selection_rule.json` from `tune_rule.py`, `names.py` + `team_overrides.json`, `train.py`, `app.py`, `web/`; data under `footypreds/data/fotbal*`). Run it with `python -m uvicorn fotbalPrediction.app:app --host 127.0.0.1 --port 8020`.
+
 Root files: `README.md`, `start.ps1`, `pyproject.toml`, `requirements*.txt`, `.env.example`, `.github/workflows/tests.yml`.
 
 ## Build, Test, and Development Commands

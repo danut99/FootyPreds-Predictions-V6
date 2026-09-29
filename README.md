@@ -148,6 +148,8 @@ footypreds/
   artifacts/        capturile ui_smoke.py (excluse din Git)
   docs/             model, evaluare, benchmark, produs, migrare
   data/             SQLite și date benchmark (excluse din Git)
+fotbalPrediction/   site separat de fotbal (port 8020): model antrenat pe football-data.co.uk,
+                    benchmark fără leakage, regulă de selecție 80%/85%, web/ (vezi README-ul lui)
 ```
 
 ## Dezvoltare

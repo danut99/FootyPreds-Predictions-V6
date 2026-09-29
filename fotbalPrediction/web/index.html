@@ -1,0 +1,98 @@
+<!doctype html><html lang="ro"><head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FotbalPrediction · Meciurile zilei</title>
+  <link rel="stylesheet" href="/assets/style.css?v=1"><script src="/assets/app.js?v=1" defer></script>
+</head><body><main>
+  <header class="topbar">
+    <div class="brand"><i>FP</i><span>FotbalPrediction<small>daily intelligence</small></span></div>
+    <div class="status" id="status">Se încarcă modelul…</div>
+  </header>
+  <section class="hero dashboard-hero">
+    <p class="eyebrow">FOTBAL · 22 DE LIGI EUROPENE · ANALIZĂ ZILNICĂ</p>
+    <h1>Meciuri. Probabilități.<br><em>Verdicte verificate.</em></h1>
+    <p class="lead">Toate piețele unui meci dintr-un singur model: 1X2, șansă dublă, goluri, handicap,
+      scor exact, pauză, cornere, cartonașe și șuturi pe poartă. Pentru zilele încheiate vezi ce
+      selecții au ieșit.</p>
+  </section>
+  <nav class="view-switch" aria-label="Tip panou">
+    <button type="button" class="active" data-view="daily">Program &amp; rezultate</button>
+    <button type="button" data-view="live"><i></i> LIVE</button>
+  </nav>
+  <nav class="date-nav daily-view" aria-label="Selectează ziua">
+    <button class="nav-arrow" id="previous-day" type="button" aria-label="Ziua precedentă">←</button>
+    <div id="date-strip" class="date-strip"></div>
+    <button class="nav-arrow" id="next-day" type="button" aria-label="Ziua următoare">→</button>
+    <label class="calendar-button" aria-label="Alege data"><span>▦</span><input id="date-picker" type="date"></label>
+  </nav>
+  <section class="board-head daily-view">
+    <div><p class="eyebrow" id="day-label">MECIURILE ZILEI</p><h2 id="board-title">Se încarcă…</h2></div>
+    <div class="legend"><span><i class="dot won"></i> Câștigat</span><span><i class="dot lost"></i> Pierdut</span>
+      <span><i class="dot open"></i> Nedecontat</span></div>
+  </section>
+  <section class="filters daily-view" aria-label="Filtre predicții">
+    <div><span>Stare meci</span><div class="filter-group" id="status-filter">
+      <button type="button" class="active" data-status="all">Toate</button>
+      <button type="button" data-status="upcoming">Nu au început</button>
+      <button type="button" data-status="finished">Încheiate</button>
+    </div></div>
+    <div><span>Format</span><div class="filter-group" id="daily-mode">
+      <button type="button" class="active" data-daily-mode="single">Meciuri</button>
+      <button type="button" data-daily-mode="double">2 combinate</button>
+    </div></div>
+    <div><span>Meciuri afișate</span><div class="filter-group" id="source-filter">
+      <button type="button" class="active" data-source="model">Cu model</button>
+      <button type="button" data-source="all">Toate</button>
+    </div></div>
+    <div><span>Șansă minimă / selecție</span><div class="filter-group" id="chance-filter">
+      <button type="button" class="active" data-chance="0">Toate</button>
+      <button type="button" data-chance="0.75">≥ 75%</button>
+      <button type="button" data-chance="0.80">≥ 80%</button>
+      <button type="button" data-chance="0.85">≥ 85%</button>
+      <button type="button" data-chance="value">Sigur + cotă</button>
+    </div></div>
+    <div class="wide"><span>Tip pariu</span><div class="filter-group" id="market-filter">
+      <button type="button" class="active" data-market="all" data-label="Toate">Toate</button>
+      <button type="button" data-market="1x2" data-label="1X2">1X2</button>
+      <button type="button" data-market="dc" data-label="Șansă dublă">Șansă dublă</button>
+      <button type="button" data-market="goals" data-label="Goluri">Goluri</button>
+      <button type="button" data-market="team_goals" data-label="Echipă goluri">Echipă goluri</button>
+      <button type="button" data-market="btts" data-label="GG/NG">GG/NG</button>
+      <button type="button" data-market="ah" data-label="Handicap">Handicap</button>
+      <button type="button" data-market="cs" data-label="Scor exact">Scor exact</button>
+      <button type="button" data-market="ht" data-label="Pauză">Pauză</button>
+      <button type="button" data-market="corners" data-label="Cornere">Cornere</button>
+      <button type="button" data-market="cards" data-label="Cartonașe">Cartonașe</button>
+      <button type="button" data-market="sot" data-label="Șuturi pe poartă">Șuturi pe poartă</button>
+    </div></div>
+  </section>
+  <p class="filter-note daily-view" id="filter-note"></p>
+  <section id="summary" class="summary-row daily-view hidden"></section>
+  <section id="matches" class="match-grid daily-view" aria-live="polite"></section>
+  <section id="live-panel" class="live-panel hidden">
+    <div class="live-head"><div><p class="eyebrow">FOTBAL ÎN DESFĂȘURARE</p>
+      <h2>Analiză live la cerere</h2><p>Nu se fac actualizări în fundal. Fiecare apăsare consumă un singur refresh.</p></div>
+      <button type="button" id="refresh-live">Actualizează live</button></div>
+    <p id="live-updated" class="filter-note">Nu ai cerut încă date live.</p>
+    <div class="live-controls">
+      <div class="filter-group" id="live-mode">
+        <button type="button" class="active" data-live-mode="single">1 selecție</button>
+        <button type="button" data-live-mode="double">2 combinate</button>
+      </div>
+      <label>Tip piață<select id="live-market"><option value="all">Toate</option>
+        <option value="1x2">1X2</option><option value="dc">Șansă dublă</option>
+        <option value="dnb">Egal = anulat</option><option value="goals">Goluri</option>
+        <option value="btts">GG/NG</option><option value="next">Următorul gol</option></select></label>
+      <label>Șansă minimă<select id="live-chance"><option value="0">Toate</option>
+        <option value="value">Sigur + cotă bună</option>
+        <option value="0.6">≥ 60%</option><option value="0.7">≥ 70%</option>
+        <option value="0.8">≥ 80%</option></select></label>
+      <label>Ordonare<select id="live-sort"><option value="desc">Cel mai sigur → slab</option>
+        <option value="asc">Cel mai slab → sigur</option></select></label>
+    </div>
+    <p id="live-filter-note" class="filter-note"></p>
+    <div id="live-matches" class="match-grid"><div class="empty"><strong>Apasă „Actualizează live”.</strong>
+      <span>Datele vor fi cerute numai atunci.</span></div></div>
+  </section>
+  <footer>Predicțiile sunt estimări statistice, nu garanții de profit. Selecțiile de 80–85% au cote
+    scurte, iar la cote reale niciuna nu a avut randament pozitiv în testele istorice. Joacă responsabil.</footer>
+</main></body></html>
