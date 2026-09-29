@@ -358,6 +358,17 @@ def test_tennis_without_odds_is_shown_but_not_suggested():
     assert item["suggestions"] == []
 
 
+def test_tennis_detail_adds_game_handicaps_from_stats():
+    stats = {
+        "match": [{"name": "Total games won", "home": "52% (12/23)", "away": "48% (11/23)"}],
+        "set-3": [{"name": "Total games won", "home": "57% (4/7)", "away": "43% (3/7)"}],
+    }
+    item = lv.live_item(game("tennis", 1, 1, {"1": 1.8, "2": 2.0}, period="S3"), stats=stats)
+    keys = {market["key"] for market in item["markets"]}
+    assert any(key.startswith("live_games_ah_") for key in keys)
+    assert any(key.startswith("live_set_games_ah_") for key in keys)
+
+
 # --- basketball ----------------------------------------------------------------------------
 
 

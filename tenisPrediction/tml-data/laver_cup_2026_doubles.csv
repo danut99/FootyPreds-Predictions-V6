@@ -1,0 +1,2 @@
+event_id,tourney_id,tourney_name,surface,indoor,tourney_date,match_num,round,winner1_id,winner1_name,winner2_id,winner2_name,loser1_id,loser1_name,loser2_id,loser2_name,score,minutes,w_ace,w_df,w_svpt,w_1stIn,w_1stWon,w_2ndWon,w_SvGms,w_bpSaved,w_bpFaced,l_ace,l_df,l_svpt,l_1stIn,l_1stWon,l_2ndWon,l_SvGms,l_bpSaved,l_bpFaced,source_url
+2026-9210,9210,Laver Cup,Hard,I,20260925,4,RR,A0E2,Carlos Alcaraz,M0NI,Jakub Mensik,BK92,Alexander Bublik,FB98,Taylor Fritz,6-4 6-4,87,3,3,64,35,26,19,10,5,5,7,0,57,43,31,6,10,2,4,https://www.lavercup.com/match/london-2026-match-4

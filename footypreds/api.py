@@ -172,6 +172,27 @@ def board_item(match, analysis):
             "scores": analysis["scores"][:3],
             "htft": analysis["htft"][0],
         }
+    elif sport == "tennis":
+        # Additiv: panoul de tenis poate filtra toate piețele, nu doar rezumatul principal.
+        item["markets"] = [
+            {
+                **market,
+                **(
+                    {
+                        "won": settle(
+                            sport,
+                            market["key"],
+                            match.home_goals,
+                            match.away_goals,
+                            match.finish_type or "finished",
+                        )
+                    }
+                    if match.status == "finished"
+                    else {}
+                ),
+            }
+            for market in analysis["markets"]
+        ]
     if match.status == "finished":
         item["result"] = {
             "score": f"{match.home_goals}-{match.away_goals}",

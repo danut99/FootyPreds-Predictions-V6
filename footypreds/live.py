@@ -772,6 +772,65 @@ def tennis_prematch(odds=None, analysis=None, best_of=3):
     return {"home_win": 0.5, "set_win": 0.5, "source": "default"}
 
 
+def tennis_games_won(stats, period):
+    """Game-uri câștigate (home, away) din statistica `Total games won`, dacă există."""
+    for row in (stats or {}).get(period, []):
+        if str(row.get("name", "")).casefold() != "total games won":
+            continue
+        values = []
+        for side in ("home", "away"):
+            found = re.search(r"\((\d+)\s*/\s*\d+\)", str(row.get(side, "")))
+            if not found:
+                return None
+            values.append(int(found.group(1)))
+        return tuple(values)
+    return None
+
+
+def tennis_game_handicaps(match, stats, q, current_set):
+    """Handicapuri game-uri din scorul derivat din statistici.
+
+    Fluxul nu spune mereu cine servește, deci folosim o aproximație Normală prudentă pentru
+    game-urile rămase și marcăm piețele ca nedecontabile/orientative.
+    """
+    output = []
+    for period, group, prefix in (
+        ("match", "Handicap game-uri (meci)", "live_games"),
+        (f"set-{current_set}", f"Setul {current_set} - handicap game-uri", "live_set_games"),
+    ):
+        score = tennis_games_won(stats, period)
+        if score is None:
+            continue
+        home, away = score
+        played = home + away
+        projected = 12.0 if period != "match" else 12.0 + 8.0 * max(0, 2 - current_set)
+        remaining = max(2.0, projected - played)
+        expected_margin = home - away + (2 * q - 1) * remaining
+        deviation = max(1.8, math.sqrt(remaining) * 0.9)
+        for line in (-2.5, -1.5, 1.5, 2.5):
+            probability = NORMAL.cdf((expected_margin + line) / deviation)
+            side = "1" if probability >= 0.5 else "2"
+            chosen_line = line if side == "1" else -line
+            chosen_probability = probability if side == "1" else 1 - probability
+            player = match.home if side == "1" else match.away
+            key = f"{prefix}_ah_{side}_{fmt_signed(chosen_line)}"
+            if any(m["key"] == key for m in output):
+                continue
+            output.append(
+                market(
+                    "tennis",
+                    key,
+                    group,
+                    chosen_probability,
+                    f"Scor game-uri {home}-{away}; estimare fără informația sigură "
+                    "despre serviciu.",
+                    selectable=False,
+                    name=f"{player} {fmt_signed(chosen_line)} game-uri",
+                )
+            )
+    return output
+
+
 def tennis_live(match, analysis=None, stats=None):
     live = match.live or {}
     notes = []
@@ -865,6 +924,8 @@ def tennis_live(match, analysis=None, stats=None):
                     name=name,
                 )
             )
+    if stats:
+        markets.extend(tennis_game_handicaps(match, stats, q, current_set))
     markets = [m for m in markets if not (m["selectable"] and decided(m["probability"]))]
     if prematch["source"] == "default":
         unreliable(markets)
