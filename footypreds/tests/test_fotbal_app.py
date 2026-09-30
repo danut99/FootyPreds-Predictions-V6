@@ -192,9 +192,10 @@ def test_unknown_league_falls_back_to_core_and_unknown_team_is_listed(client):
         status="finished",
         home_goals=1,
         away_goals=1,
+        odds=None,
         probabilities={"1": 0.5, "X": 0.3, "2": 0.2, "over25": 0.45, "ht_1": 0.3, "bogus": 0.4},
     )
-    unknown = board_match(id="fs-6", home="Nowhere Rovers")
+    unknown = board_match(id="fs-6", home="Nowhere Rovers", odds=None)
     response = test_client.post("/api/fotbal-probabilities", json=[core, unknown]).json()
     fallback, missing = response["matches"]
     assert fallback["source"] == "core" and fallback["known"] is False
@@ -210,6 +211,44 @@ def test_unknown_league_falls_back_to_core_and_unknown_team_is_listed(client):
         "name": "Nowhere Rovers",
         "flashscore_league": "ENGLAND: Premier League",
     } in listed
+
+
+def test_match_without_model_is_estimated_from_its_odds(client):
+    test_client, _, _, now = client
+    kickoff = (now + timedelta(hours=5)).isoformat()
+    national = board_match(
+        id="fs-7",
+        league="WORLD: Friendly International",
+        country="World",
+        home="Romania",
+        away="Spain",
+        kickoff=kickoff,
+        odds={"1": 5.5, "X": 4.0, "2": 1.6},
+        probabilities={"1": 0.9, "X": 0.05, "2": 0.05},
+    )
+    first = test_client.post("/api/fotbal-probabilities", json=[national]).json()["matches"][0]
+    assert first["source"] == "market" and first["known"] is False
+    assert first["reason"] == "ligă fără model" and first["journal"] is False
+    keys = {m["key"]: m for m in first["markets"]}
+    assert keys["2"]["probability"] > 0.5 > keys["1"]["probability"]  # the odds, not the core
+    assert keys["2"]["odds"] == 1.6 and all(m["stat"] == "goals" for m in first["markets"])
+    assert any(m["decision"] == SELECT for m in first["markets"])
+    assert all(m["won"] is None for m in first["markets"])
+    # new prices before kick-off replace the estimate; after it the journal version is kept
+    moved = national | {"odds": {"1": 9.0, "X": 5.0, "2": 1.3}}
+    second = test_client.post("/api/fotbal-probabilities", json=[moved]).json()["matches"][0]
+    away = {m["key"]: m["probability"] for m in second["markets"]}["2"]
+    assert away > keys["2"]["probability"]
+    finished = national | {"status": "finished", "home_goals": 0, "away_goals": 2, "odds": None}
+    after = test_client.post("/api/fotbal-probabilities", json=[finished]).json()["matches"][0]
+    assert after["source"] == "market" and after["journal"] is True and after["retro"] is False
+    won = {m["key"]: m["won"] for m in after["markets"]}
+    assert won["2"] is True and won["1"] is False and won["X2"] is True
+    assert {m["key"]: m["probability"] for m in after["markets"]}["2"] == away
+    # an unknown team of a modelled league is estimated from the odds too
+    rovers = board_match(id="fs-8", home="Nowhere Rovers", kickoff=kickoff)
+    entry = test_client.post("/api/fotbal-probabilities", json=[rovers]).json()["matches"][0]
+    assert entry["source"] == "market" and "Nowhere Rovers" in entry["reason"]
 
 
 def test_payload_is_validated_and_capped(client):

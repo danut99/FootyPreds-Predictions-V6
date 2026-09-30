@@ -20,6 +20,11 @@ Predicțiile făcute înainte de începerea meciului se păstrează într-un jur
 predicția din jurnal. Fără jurnal, dacă modelul a fost antrenat și pe ziua respectivă (sau are deja
 rândul football-data al meciului, ±1 zi), predicția este marcată „retroactivă” (modelul putea
 vedea deja rezultatul) și nu intră în precizia zilei.
+
+Meciurile pe care modelul nu le acoperă (echipe naționale, cupe, alte ligi) dar care au cote
+1/X/2 primesc „estimarea din cote” (``market_model``): toate piețele de goluri dintr-o matrice de
+scor coerentă cu piața, cu selecții după lista înghețată ``market_rule.json``. Fără cote rămâne
+rezerva: probabilitățile modelului de bază FootyPreds, niciodată selectabile.
 """
 
 from __future__ import annotations
@@ -39,6 +44,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
+from . import market_model
 from . import markets as mk
 from .model import (
     MAX_P,
@@ -449,6 +455,8 @@ def create_app(
                 # el să păstreze ultima versiune dinainte de start; după start se folosește aceea.
                 upcoming = _upcoming(match, moment)
                 result = None if upcoming else stored.get(match.id)
+                if result is not None and result.get("source") == "market":
+                    result = None  # jurnalul estimării din cote nu ține locul modelului
                 entry["journal"] = result is not None
                 if result is None:
                     result = current.predict(
@@ -485,7 +493,26 @@ def create_app(
                                 "name": name,
                                 "flashscore_league": match.league,
                             }
-                if match.probabilities:
+                # Fără model: estimarea din cotele 1/X/2 (doar goluri); înainte de start se
+                # recalculează și suprascrie jurnalul, după start se folosește cea din jurnal.
+                upcoming = _upcoming(match, moment)
+                estimate = None if upcoming else stored.get(match.id)
+                if estimate is not None and estimate.get("source") != "market":
+                    estimate = None
+                entry["journal"] = estimate is not None
+                if estimate is None:
+                    estimate = market_model.predict(match.odds)
+                    if estimate is not None:
+                        estimate["source"] = "market"
+                        if upcoming:
+                            journal.put(match.id, day, estimate)
+                if estimate is not None:
+                    entry.update(
+                        source="market",
+                        odds_blend=True,
+                        markets=[dict(market) for market in estimate["markets"]],
+                    )
+                elif match.probabilities:
                     entry.update(source="core", markets=_core_markets(match.probabilities))
             for market in entry["markets"]:
                 market["won"] = (

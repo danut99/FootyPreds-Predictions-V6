@@ -40,7 +40,7 @@ let valueMode = false;
 let marketType = 'all';
 let dailyMode = 'single';
 let matchStatus = 'all';
-let sourceMode = 'model';
+let sourceMode = 'estimate';
 let liveItems = [];
 let liveMode = 'single';
 let dayRequest = 0;
@@ -148,6 +148,10 @@ function sourceLabel(item) {
     return parts.join(' · ');
   }
   const reason = fp.reason ? ` (${fp.reason})` : '';
+  if (fp.source === 'market') {
+    return `Estimare din cotele 1X2 (fără model de echipă${reason}): doar piețe de goluri`
+      + `${fp.journal ? ' · estimare din jurnal, făcută înainte de meci' : ''}.`;
+  }
   if (fp.source === 'core') return `Fără model fotbal${reason}: probabilități FootyPreds de bază, fără selecții.`;
   return `Fără model${reason}.`;
 }
@@ -187,7 +191,7 @@ function matchCard(item) {
   const center = item.result ? `final · ${esc(item.result.score)}` : esc(clockTime(match.kickoff));
   const cardState = pick && pick.won === true ? 'is-won' : pick && pick.won === false ? 'is-lost' : '';
   const recommendation = pick
-    ? `<div class="recommendation"><div><small>SELECȚIA MODELULUI · ${esc(highMode() ? 'REGULA STRICTĂ 85%' : 'REGULA 80%')}</small>
+    ? `<div class="recommendation"><div><small>${item.fp && item.fp.source === 'market' ? 'SELECȚIE DIN COTE' : 'SELECȚIA MODELULUI'} · ${esc(highMode() ? 'REGULA STRICTĂ 85%' : 'REGULA 80%')}</small>
         <strong>${esc(pick.label)}</strong></div><b>${esc(percent(pick.probability))}</b></div>`
     : `<div class="recommendation none"><div><small>DECIZIA MODELULUI</small>
         <strong>Fără pariu în filtrul ales</strong></div><b>—</b></div>`;
@@ -218,7 +222,8 @@ function visibleItems() {
   return loadedItems.filter((item) => matchStatus === 'all'
     || (matchStatus === 'upcoming' && item.match.status === 'scheduled')
     || (matchStatus === 'finished' && item.match.status === 'finished'))
-    .filter((item) => sourceMode === 'all' || (item.fp && item.fp.source === 'model'))
+    .filter((item) => sourceMode === 'all' || (item.fp && (item.fp.source === 'model'
+      || (sourceMode === 'estimate' && item.fp.source === 'market'))))
     .filter((item) => (!minimumChance && !valueMode) || pickOf(item));
 }
 function renderSummary(items) {
@@ -308,8 +313,9 @@ function renderBoard() {
   const modelCount = loadedItems.filter((item) => item.fp && item.fp.source === 'model').length;
   const chanceNote = valueMode ? ' · selectate (80%) cu cotă reală/corectă ≥ 1.20'
     : minimumChance ? ` · selecții ≥ ${percent(minimumChance)}${highMode() ? ' (regula strictă 85%)' : ''}` : '';
+  const marketCount = loadedItems.filter((item) => item.fp && item.fp.source === 'market').length;
   document.querySelector('#filter-note').textContent = `${visible.length} din ${loadedItems.length} meciuri`
-    + ` (${modelCount} cu model) · ${KIND_LABELS[marketType]}${chanceNote}`;
+    + ` (${modelCount} cu model, ${marketCount} estimate din cote) · ${KIND_LABELS[marketType]}${chanceNote}`;
   if (dailyMode === 'double') {
     summaryNode.classList.add('hidden');
     const cards = dailyDoubleCards(visible);

@@ -328,6 +328,60 @@ peste țintă pe tuning, dar cifrele 2425/2526 raportate mai sus pentru cartona�
 arbitru) sunt ușor optimiste pentru producție în aceste ligi. Celelalte ligi nu au arbitru în CSV,
 deci nu sunt afectate.
 
+## Estimarea din cote pentru meciurile fără model (`fotbal-cote-1.0`, 30.09.2026)
+
+Motivul: într-o zi fără campionate (30.09.2026: 211 meciuri, din care 2 în ligile modelate)
+aplicația nu avea ce arăta. `market_model.py` estimează orice meci cu cote 1/X/2, fără istoric de
+echipă: marja scoasă cu metoda „power”, ratele de goluri alese ca matricea Dixon-Coles
+(rho −0.05) să dea diferența P(1) − P(2) și egalul pieței, apoi matricea re-ponderată exact pe
+1/X/2. Totalul de goluri = 2.65 + 0.75 × (totalul dedus din egal − 2.65).
+
+Validare (`python -m fotbalPrediction.market_eval`), două seturi tratate ca „ligi necunoscute”:
+`main` = 22 de ligi cu cotele Bet365 de dinaintea închiderii (o casă, cu marjă: cel mai aproape de
+lista FlashScore); `extra` = 16 ligi suplimentare (România, Brazilia, SUA...) cu media cotelor de
+închidere, singurele disponibile; modelul principal nu se antrenează pe ele.
+
+**Ponderea totalului** (numai 2223+2324, log-loss peste 2.5 goluri): pondere 0 (total fix)
+0.6911 / 0.6905; 0.5: 0.6803 / 0.6772; **0.75: 0.6787 / 0.6742**; 1.0: 0.6792 / 0.6735
+(main / extra). Ales 0.75 (cel mai bun pe cotele pre-închidere). Pentru comparație, pe `main`
+piața reală de goluri are 0.678, iar modelul fără cote 0.683: egalul din 1/X/2 conține aproape
+toată informația despre total.
+
+**Regula** (`market_rule.json`, derivată numai pe 2223+2324 cu criteriile din `tune_rule.py`,
+cerute în AMBELE seturi): 41 de chei pentru 80%, 35 pentru 85%; o selecție pe grup și meci
+(p minim din banda prag ≤ p ≤ 0.93). Fișierele au fost înghețate (sha256 în
+`footypreds/data/fotbal/bench/market/`) înainte de confirmare și de testul blocat.
+
+Acuratețe / acoperire (cotă corectă medie ~1.18–1.20 la 80%, ~1.13–1.15 la 85%); ROI la cote
+reale doar pentru 1X2 și șansa dublă:
+
+| Grup | Tuning 2223+2324 main | extra | Confirmare 2425 main | extra | **Test blocat 2526** main | extra |
+|---|---|---|---|---|---|---|
+| 1x2 (80%) | 84.9 / 3.0 | 86.6 / 1.9 | 85.4 / 3.0 | 81.5 / 1.1 | 85.0 / 2.5 | 87.5 / 1.3 |
+| dc (80%) | 84.2 / 29.4 | 83.8 / 29.5 | 83.8 / 30.8 | 83.9 / 29.6 | 85.1 / 29.6 | 81.9 / 31.2 |
+| goals (80%) | 85.8 / 100 | 86.2 / 100 | 86.6 / 100 | 85.1 / 100 | 86.7 / 100 | 85.6 / 100 |
+| team_goals (80%) | 85.0 / 97.9 | 85.5 / 98.2 | 84.7 / 97.7 | 86.5 / 98.7 | 85.1 / 97.8 | 85.5 / 98.3 |
+| dnb (80%) | 87.2 / 11.7 | 86.3 / 11.5 | 85.8 / 11.7 | 88.3 / 10.8 | 87.0 / 11.5 | 84.5 / 12.7 |
+| ah (80%) | 84.7 / 89.3 | 85.1 / 89.1 | 84.5 / 89.1 | 84.9 / 88.7 | 85.9 / 89.0 | 84.5 / 88.5 |
+| **toate (80%)** | 85.2 | 85.5 | 85.2 | 85.4 | **85.9** | **84.9** |
+| dc (85%) | 88.2 / 15.2 | 89.1 / 13.6 | 87.7 / 15.0 | 90.4 / 13.2 | 88.1 / 14.6 | 87.9 / 15.0 |
+| goals (85%) | 87.7 / 74.0 | 88.3 / 70.7 | 88.6 / 73.7 | 87.2 / 67.6 | 88.8 / 69.7 | 87.5 / 61.0 |
+| **toate (85%)** | 88.5 | 88.7 | 88.9 | 88.5 | **88.8** | **88.5** |
+| ROI toate (80%) | −3.7% | −4.0% | −4.4% | −4.1% | −3.7% | −7.4% |
+| ROI toate (85%) | −3.8% | −3.1% | −4.6% | −2.0% | −5.0% | −5.7% |
+
+Testul blocat 2526 a fost rulat o singură dată (30.09.2026), după înghețare: 7.634 meciuri main,
+4.350 extra. 1X2 este piața însăși (log-loss 1.0019 main, 1.0100 extra); peste 2.5: 0.6831 /
+0.6664. Toate grupurile rămân peste țintă în ambele seturi, în toate cele trei perioade; ROI-ul
+este negativ peste tot (eșantioanele mici de 1X2 cu ROI pozitiv sunt zgomot).
+
+Limite: validat numai pe ligi de seniori; pe amicale, naționale, feminin, tineret și cupe regula
+nu a fost măsurată. Setul `extra` folosește cote de închidere (mai bune decât cele din lista
+FlashScore). Fără cornere, cartonașe, șuturi și pauză.
+
+În ziua de 30.09.2026 (date locale, fără apeluri RapidAPI): 133 din 211 meciuri primesc
+estimare (131 din cote + 2 din model), față de 2 înainte; celelalte 78 nu au cote 1/X/2.
+
 ## Observații despre harness (fișierele harness nu au fost modificate)
 
 - T1 2223 conține 29 de meciuri acordate 3-0 la masa verde (Gaziantep, Hatayspor după cutremur)

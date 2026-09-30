@@ -110,9 +110,15 @@ Deschide http://127.0.0.1:8020. Cât timp modelul se antrenează, `/api/health` 
   un meci de după miezul nopții la București e datat cu o zi mai devreme în football-data).
   Retroactivele nu intră în precizia zilei, iar o combinație din „2 combinate” care conține un
   meci retroactiv apare „NEVERIFICABILĂ” și nu intră în precizia verificată.
-- Meciurile din ligi fără model (sau cu echipe nerecunoscute) afișează probabilitățile FootyPreds
-  de bază, marcate clar, fără selecții. `GET /api/unresolved` listează numele de adăugat în
-  `team_overrides.json`.
+- Meciurile din ligi fără model (echipe naționale, cupe, alte țări) sau cu echipe nerecunoscute,
+  dar cu cote 1/X/2 în FlashScore, primesc **estimarea din cote** (`market_model.py`): marja
+  scoasă din cote, totalul de goluri dedus din probabilitatea de egal, apoi toate piețele de
+  goluri (șansă dublă, peste/sub, goluri pe echipă, GG/NG, handicap, scor exact) dintr-o singură
+  matrice de scor. Selecțiile urmează lista înghețată `market_rule.json` (41 de chei la 80%, 35
+  la 85%). Fără cornere, cartonașe, șuturi sau pauză (nu există istoric de echipă). Filtrul
+  „Meciuri afișate”: „Model + cote” (implicit), „Doar model”, „Toate”.
+- Meciurile fără cote afișează probabilitățile FootyPreds de bază, marcate clar, fără selecții.
+  `GET /api/unresolved` listează numele de adăugat în `team_overrides.json`.
 - LIVE: `/core/api/live?sport=football` (la cerere, un refresh pe apăsare) și statisticile
   meciului la `/core/api/live/{id}` (un apel RapidAPI).
 - Rute: `/`, `/api/health`, `/api/teams?q=`, `/api/predict?home=&away=&league=E0&day=&odds_1=
@@ -124,7 +130,8 @@ Deschide http://127.0.0.1:8020. Cât timp modelul se antrenează, `/api/health` 
 $env:PYTHONIOENCODING = "utf-8"
 python -m fotbalPrediction.benchmark --model fotbalPrediction.model:benchmark_factory --seasons 2223,2324 [--odds avg]
 python -m fotbalPrediction.tune_rule          # rederivează selection_rule.json (numai 2223+2324)
-python -m pytest -q footypreds/tests/test_fotbal_benchmark.py footypreds/tests/test_fotbal_model.py footypreds/tests/test_fotbal_app.py
+python -m fotbalPrediction.market_eval --report   # estimarea din cote pe 2223+2324 (--derive rederivează market_rule.json)
+python -m pytest -q footypreds/tests/test_fotbal_benchmark.py footypreds/tests/test_fotbal_model.py footypreds/tests/test_fotbal_app.py footypreds/tests/test_fotbal_market.py
 python -m ruff check footypreds fotbalPrediction
 python -m ruff format --check footypreds fotbalPrediction
 node --check fotbalPrediction/web/app.js
@@ -146,6 +153,11 @@ versiune (`--seasons 2526 --locked-test`), numai de integrator.
   reantrenarea durează ~1 minut; până atunci servește modelul vechi.
 - Liniile asiatice sfert (x.25/x.75) se decontează pe jumătăți; „câștigat” include și jumătatea
   câștigată, ca în benchmark. Nucleul FootyPreds nu le decontează.
-- Ligile suplimentare (ROU, AUT, …) au doar scor și cote de închidere: nu sunt modelate.
+- Ligile suplimentare (ROU, AUT, …) au doar scor și cote de închidere: nu au model de echipă;
+  în aplicație primesc estimarea din cote, ca orice alt meci fără model.
+- Estimarea din cote a fost validată numai pe ligi de seniori (22 principale + 16 suplimentare).
+  Pe amicale, echipe naționale, fotbal feminin, tineret și cupe regula se aplică la fel, dar nu
+  a fost măsurată acolo. Depinde de calitatea cotelor din lista FlashScore (o singură casă, cu
+  marjă) și, ca tot restul, nu bate piața: selecțiile au cote scurte și ROI negativ la cote reale.
 - Convenția cartonașelor diferă (Anglia/Scoția nu numără primul galben al unui dublu galben);
   decontarea urmează football-data, o casă de pariuri poate deconta altfel.
